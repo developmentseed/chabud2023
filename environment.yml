@@ -7,6 +7,7 @@ dependencies:
   - h5netcdf=1.1.0
   - jupyterlab=3.6.3
   - python=3.11.3
+  - python-graphviz=0.20.1
   - torchdata=0.6.0
   - xarray-datatree=0.0.12
 platforms:
