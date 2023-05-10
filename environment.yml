@@ -4,6 +4,7 @@ channels:
   - nodefaults
 dependencies:
   - conda-lock=1.4.0
+  - h5netcdf=1.1.0
   - jupyterlab=3.6.3
   - python=3.11.3
   - torchdata=0.6.0

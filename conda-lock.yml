@@ -17,7 +17,7 @@ metadata:
   - url: nodefaults
     used_env_vars: []
   content_hash:
-    linux-64: 77dd6eb60ac508f820d98fba39dbde176d339ee0ae16f00bbd0fc479a38256b1
+    linux-64: 5dd4b614f2b669ebd78cf0cfc1341e8e7a9332b6383d6fdcf6f13a47cb3d1c5a
   platforms:
   - linux-64
   sources:
@@ -249,6 +249,19 @@ package:
   platform: linux-64
   url: https://conda.anaconda.org/conda-forge/linux-64/keyutils-1.6.1-h166bdaf_0.tar.bz2
   version: 1.6.1
+- category: main
+  dependencies:
+    libgcc-ng: '>=12'
+    libstdcxx-ng: '>=12'
+  hash:
+    md5: 0f683578378cddb223e7fd24f785ab2a
+    sha256: 4df6a29b71264fb25462065e8cddcf5bca60776b1801974af8cbd26b7425fcda
+  manager: conda
+  name: libaec
+  optional: false
+  platform: linux-64
+  url: https://conda.anaconda.org/conda-forge/linux-64/libaec-1.0.6-hcb278e6_1.conda
+  version: 1.0.6
 - category: main
   dependencies:
     libgcc-ng: '>=7.5.0'
@@ -956,6 +969,18 @@ package:
   platform: linux-64
   url: https://conda.anaconda.org/conda-forge/noarch/backports-1.0-pyhd8ed1ab_3.conda
   version: '1.0'
+- category: main
+  dependencies:
+    python: '>=3.6'
+  hash:
+    md5: 576d629e47797577ab0f1b351297ef4a
+    sha256: 6dbf7a5070cc43d90a1e4c2ec0c541c69d8e30a0e25f50ce9f6e4a432e42c5d7
+  manager: conda
+  name: cached_property
+  optional: false
+  platform: linux-64
+  url: https://conda.anaconda.org/conda-forge/noarch/cached_property-1.5.2-pyha770c72_1.tar.bz2
+  version: 1.5.2
 - category: main
   dependencies:
     python: '>=3.6'
@@ -2032,6 +2057,18 @@ package:
   version: 6.0.0
 - category: main
   dependencies:
+    cached_property: '>=1.5.2,<1.5.3.0a0'
+  hash:
+    md5: 9b347a7ec10940d3f7941ff6c460b551
+    sha256: 561e6660f26c35d137ee150187d89767c988413c978e1b712d53f27ddf70ea17
+  manager: conda
+  name: cached-property
+  optional: false
+  platform: linux-64
+  url: https://conda.anaconda.org/conda-forge/noarch/cached-property-1.5.2-hd8ed1ab_1.tar.bz2
+  version: 1.5.2
+- category: main
+  dependencies:
     libffi: '>=3.4,<4.0a0'
     libgcc-ng: '>=12'
     pycparser: ''
@@ -2086,6 +2123,25 @@ package:
   platform: linux-64
   url: https://conda.anaconda.org/conda-forge/noarch/comm-0.1.3-pyhd8ed1ab_0.conda
   version: 0.1.3
+- category: main
+  dependencies:
+    libaec: '>=1.0.6,<2.0a0'
+    libcurl: '>=7.88.1,<9.0a0'
+    libgcc-ng: '>=12'
+    libgfortran-ng: ''
+    libgfortran5: '>=11.3.0'
+    libstdcxx-ng: '>=12'
+    libzlib: '>=1.2.13,<1.3.0a0'
+    openssl: '>=3.0.8,<4.0a0'
+  hash:
+    md5: 975973a4350ab45ff1981fe535a12af5
+    sha256: 989019cdf2a1319afb299f47dde9a52dedc16906ec53e2d32e0627caf557d034
+  manager: conda
+  name: hdf5
+  optional: false
+  platform: linux-64
+  url: https://conda.anaconda.org/conda-forge/linux-64/hdf5-1.14.0-nompi_hb72d44e_103.conda
+  version: 1.14.0
 - category: main
   dependencies:
     python: ''
@@ -2427,6 +2483,23 @@ package:
   version: 40.0.2
 - category: main
   dependencies:
+    cached-property: ''
+    hdf5: '>=1.14.0,<1.14.1.0a0'
+    libgcc-ng: '>=12'
+    numpy: '>=1.23.5,<2.0a0'
+    python: '>=3.11,<3.12.0a0'
+    python_abi: 3.11.* *_cp311
+  hash:
+    md5: 4e4a6f85634842c89bfb2fb9a5584d4e
+    sha256: 8070e0a2b1a36c9e95b64c670d44d49a9a88107454b70135f12178aa27ed0b6b
+  manager: conda
+  name: h5py
+  optional: false
+  platform: linux-64
+  url: https://conda.anaconda.org/conda-forge/linux-64/h5py-3.8.0-nompi_py311h518a8e0_101.conda
+  version: 3.8.0
+- category: main
+  dependencies:
     importlib-metadata: '>=6.6.0,<6.6.1.0a0'
   hash:
     md5: 3cbc9615f10a3d471532b83e4250b971
@@ -2592,6 +2665,20 @@ package:
   platform: linux-64
   url: https://conda.anaconda.org/conda-forge/linux-64/aws-crt-cpp-0.19.9-h85076f6_5.conda
   version: 0.19.9
+- category: main
+  dependencies:
+    h5py: ''
+    packaging: ''
+    python: '>=3.6'
+  hash:
+    md5: 1e64e16b588612c98491cfb09bb24c35
+    sha256: 922b2e6f53602c09d4607d52e54c5beb8cf727bb729617a081685a9881cb84ca
+  manager: conda
+  name: h5netcdf
+  optional: false
+  platform: linux-64
+  url: https://conda.anaconda.org/conda-forge/noarch/h5netcdf-1.1.0-pyhd8ed1ab_1.conda
+  version: 1.1.0
 - category: main
   dependencies:
     platformdirs: '>=2.5'
