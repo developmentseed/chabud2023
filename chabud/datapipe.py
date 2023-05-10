@@ -6,9 +6,95 @@ from typing import Optional
 
 import datatree
 import lightning as L
+import torch
 import torchdata
 import torchdata.dataloader2
 import xarray as xr
+
+
+# %%
+def _path_fn(urlpath: str) -> str:
+    """
+    Get the filename from a urlpath and prepend it with 'data' so that it is
+    like 'data/filename.hdf5'.
+    """
+    return os.path.join("data", os.path.basename(urlpath))
+
+
+def _datatree_to_chip(hdf5_file: str) -> xr.Dataset:
+    """
+    Read a nested HDF5 file into a datatree.DataTree, and iterate over each
+    group which contains a chip of dimensions (512, 512, 12), to produce an
+    xarray.Dataset output.
+    """
+    dt = datatree.open_datatree(hdf5_file, engine="h5netcdf", phony_dims="access")
+    for chip in dt.values():
+        _chip = chip.squeeze()
+        _chip.attrs["uuid"] = _chip.name
+        # assert list(_chip.sizes.values()) == [512, 512, 12]  # Height, Width, Channel
+        yield _chip.to_dataset()
+
+
+def _has_pre_post_mask(dataset: xr.Dataset) -> bool:
+    """
+    Filter out chips that have incomplete data variables (e.g. missing
+    'pre-fire'). Return True if all of ('pre_fire', 'post-fire', 'mask')
+    data_vars are in the xarray.Dataset, else return False.
+    """
+    return set(dataset.data_vars) == {"pre_fire", "post_fire", "mask"}
+
+
+def _train_val_fold(chip: xr.Dataset) -> int:
+    """
+    Fold 0 is used for validation, Fold 1 and above is for training.
+    See https://huggingface.co/datasets/chabud-team/chabud-ecml-pkdd2023/discussions/3
+    """
+    if "fold" not in chip.attrs:  # no 'fold' attribute, use for training too
+        return 1  # Training set
+    if chip.attrs["fold"] == 0:
+        return 0  # Validation set
+    elif chip.attrs["fold"] >= 1:
+        return 1  # Training set
+
+
+def _pre_post_mask_tuple(
+    dataset: xr.Dataset,
+) -> tuple[xr.Dataset, xr.Dataset, xr.Dataset, dict]:
+    """
+    From a single xarray.Dataset, split it into a tuple containing the
+    pre/post/target tensors and a dictionary object containing metadata.
+
+    Returns
+    -------
+    data_tuple : tuple[xr.Dataset, xr.Dataset, xr.Dataset, dict]
+        A tuple with 4 objects, the pre-event image, the post-event image, the
+        mask image, and a Python dict containing metadata (e.g. filename, UUID,
+        fold, comments).
+    """
+    return (
+        torch.as_tensor(data=dataset.pre_fire.astype(dtype="int16").data),
+        torch.as_tensor(data=dataset.post_fire.astype(dtype="int16").data),
+        torch.as_tensor(data=dataset.mask.astype(dtype="uint8").data),
+        {
+            "filename": os.path.basename(dataset.encoding["source"]),
+            **dataset.attrs,
+        },
+    )
+
+
+def _stack_tensor_collate_fn(
+    samples: list[torch.Tensor, torch.Tensor, torch.Tensor, dict],
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, list[dict]]:
+    """
+    Stack a list of torch.Tensor objects into a single torch.Tensor, and
+    combine metadata attributes into a list of dicts.
+    """
+    pre_tensor: torch.Tensor = torch.stack(tensors=[sample[0] for sample in samples])
+    post_tensor: torch.Tensor = torch.stack(tensors=[sample[1] for sample in samples])
+    mask_tensor: torch.Tensor = torch.stack(tensors=[sample[2] for sample in samples])
+    metadata: list[dict] = [sample[3] for sample in samples]
+
+    return pre_tensor, post_tensor, mask_tensor, metadata
 
 
 # %%
@@ -80,10 +166,7 @@ class ChaBuDDataPipeModule(L.LightningDataModule):
         )
 
         # Step 1 - Download and cache HDF5 files to the data/ folder
-        def _path_fn(path) -> str:
-            # print(f"Downloading from {path}")
-            return os.path.join("data", os.path.basename(path))
-
+        # Also includes sha256 checksum verification
         dp_cache: torchdata.datapipes.iter.IterDataPipe = dp_urls.on_disk_cache(
             filepath_fn=_path_fn,
             hash_dict={
@@ -99,42 +182,29 @@ class ChaBuDDataPipeModule(L.LightningDataModule):
         )
 
         # Step 2 - Read HDF5 files into a DataTree and produce 512x512x12 chips
-        def _datatree_to_chip(hdf5_file) -> xr.Dataset:
-            """
-            Read a nested HDF5 file into a datatree.DataTree, and iterate
-            over each group which contains a chip of dimensions (512, 512, 12),
-            to produce an xarray.Dataset output with
-            """
-            dt = datatree.open_datatree(
-                hdf5_file, engine="h5netcdf", phony_dims="access"
-            )
-            for chip in dt.values():
-                _chip = chip.squeeze().to_dataset()
-                # assert list(_chip.sizes.values()) == [512, 512, 12]  # Height, Width, Channel
-                # assert set(_chip.data_vars) == {"mask", "post_fire"}
-                yield _chip
-
-        dp_chip = dp_http.flatmap(fn=_datatree_to_chip)
-
-        # Step 3 - Split chips into train/val sets based on fold attribute
-        def _train_val_fold(chip):
-            """
-            Fold 0 is used for validation, Fold 1 and above is for training.
-            See https://huggingface.co/datasets/chabud-team/chabud-ecml-pkdd2023/discussions/3
-            """
-            if chip.attrs["fold"] == 0:
-                return 0  # Validation set
-            elif chip.attrs["fold"] >= 1:
-                return 1  # Training set
-
-        dp_train, dp_val = dp_chip.demux(
-            num_instances=2, classifier_fn=_train_val_fold, buffer_size=self.batch_size
+        # Also filter out chips with missing pre-fire/post-fire/mask data_vars
+        dp_chip = dp_http.flatmap(fn=_datatree_to_chip).filter(
+            filter_fn=_has_pre_post_mask
         )
 
-        # TODO convert from xarray.Dataset to torch.Tensor
+        # Step 3 - Split chips into train/val sets based on fold attribute
+        dp_val, dp_train = dp_chip.demux(
+            num_instances=2, classifier_fn=_train_val_fold, buffer_size=1024
+        )
 
-        self.datapipe_train = dp_train
-        self.datapipe_val = dp_val
+        # Step 4 - Convert from xarray.Dataset to tuple of torch.Tensor objects
+        # Also do batching, shuffling (for train set only) and tensor stacking
+        self.datapipe_train = (
+            dp_train.map(fn=_pre_post_mask_tuple)
+            .batch(batch_size=self.batch_size)
+            .in_batch_shuffle()
+            .collate(collate_fn=_stack_tensor_collate_fn)
+        )
+        self.datapipe_val = (
+            dp_val.map(fn=_pre_post_mask_tuple)
+            .batch(batch_size=self.batch_size)
+            .collate(collate_fn=_stack_tensor_collate_fn)
+        )
 
     def train_dataloader(self) -> torchdata.dataloader2.DataLoader2:
         """
