@@ -34,10 +34,6 @@ jobs:
           environment-name: chabud
           environment-file: conda-lock.yml
 
-      # Show installed packages
-      - name: List installed packages
-        run: micromamba list
-
       # Run the unit tests
       - name: Test with pytest
         run: |
