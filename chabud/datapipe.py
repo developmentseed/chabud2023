@@ -2,7 +2,7 @@
 LightningDataModule that loads directly from HDF5 using torch DataPipe.
 """
 import os
-from typing import Optional
+from typing import Iterator
 
 import datatree
 import lightning as L
@@ -21,13 +21,15 @@ def _path_fn(urlpath: str) -> str:
     return os.path.join("data", os.path.basename(urlpath))
 
 
-def _datatree_to_chip(hdf5_file: str) -> xr.Dataset:
+def _datatree_to_chip(hdf5_file: str) -> Iterator[xr.Dataset]:
     """
     Read a nested HDF5 file into a datatree.DataTree, and iterate over each
     group which contains a chip of dimensions (512, 512, 12), to produce an
     xarray.Dataset output.
     """
-    dt = datatree.open_datatree(hdf5_file, engine="h5netcdf", phony_dims="access")
+    dt: datatree.DataTree = datatree.open_datatree(
+        hdf5_file, engine="h5netcdf", phony_dims="access"
+    )
     for chip in dt.values():
         _chip = chip.squeeze()
         _chip.attrs["uuid"] = _chip.name
@@ -59,14 +61,14 @@ def _train_val_fold(chip: xr.Dataset) -> int:
 
 def _pre_post_mask_tuple(
     dataset: xr.Dataset,
-) -> tuple[xr.Dataset, xr.Dataset, xr.Dataset, dict]:
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]:
     """
     From a single xarray.Dataset, split it into a tuple containing the
     pre/post/target tensors and a dictionary object containing metadata.
 
     Returns
     -------
-    data_tuple : tuple[xr.Dataset, xr.Dataset, xr.Dataset, dict]
+    data_tuple : tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]
         A tuple with 4 objects, the pre-event image, the post-event image, the
         mask image, and a Python dict containing metadata (e.g. filename, UUID,
         fold, comments).
@@ -83,7 +85,7 @@ def _pre_post_mask_tuple(
 
 
 def _stack_tensor_collate_fn(
-    samples: list[torch.Tensor, torch.Tensor, torch.Tensor, dict],
+    samples: list[tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]],
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, list[dict]]:
     """
     Stack a list of torch.Tensor objects into a single torch.Tensor, and
@@ -148,8 +150,10 @@ class ChaBuDDataPipeModule(L.LightningDataModule):
         self.batch_size: int = batch_size
 
     def setup(
-        self, stage: Optional[str] = None
-    ) -> (torchdata.datapipes.iter.IterDataPipe, torchdata.datapipes.iter.IterDataPipe):
+        self, stage: str | None = None
+    ) -> tuple[
+        torchdata.datapipes.iter.IterDataPipe, torchdata.datapipes.iter.IterDataPipe
+    ]:
         """
         Data operations to perform on every GPU.
         Split data into training and test sets, etc.
