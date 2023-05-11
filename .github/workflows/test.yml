@@ -21,9 +21,6 @@ jobs:
       matrix:
         python-version: ["3.11"]
         os: [ubuntu-22.04]
-    defaults:
-      run:
-        shell: bash -l {0}
 
     steps:
       # Checkout current git repository
@@ -32,13 +29,10 @@ jobs:
 
       # Install Micromamba with conda-forge dependencies
       - name: Setup Micromamba
-        uses: mamba-org/provision-with-micromamba@e2b397b12d0a38069451664382b769c9456e3d6d # v15
+        uses: mamba-org/setup-micromamba@1887e3afc05fd11eb40c9542c2939ac04234546e # v1.2.1
         with:
           environment-name: chabud
           environment-file: conda-lock.yml
-          extra-specs: |
-            python=${{ matrix.python-version }}
-            pytest
 
       # Show installed packages
       - name: List installed packages
@@ -46,4 +40,7 @@ jobs:
 
       # Run the unit tests
       - name: Test with pytest
-        run: python -m pytest --verbose chabud/tests/
+        run: |
+            micromamba install python=${{ matrix.python-version }} pytest
+            python -m pytest --verbose chabud/tests/
+        shell: micromamba-shell {0}
