@@ -21,6 +21,9 @@ jobs:
       matrix:
         python-version: ["3.11"]
         os: [ubuntu-22.04]
+    defaults:
+      run:
+        shell: bash -l {0}
 
     steps:
       # Checkout current git repository
@@ -39,4 +42,3 @@ jobs:
         run: |
             micromamba install python=${{ matrix.python-version }} pytest
             python -m pytest --verbose chabud/tests/
-        shell: micromamba-shell {0}
