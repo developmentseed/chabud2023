@@ -20,10 +20,10 @@ def test_datapipemodule():
     it = iter(datamodule.train_dataloader())
     pre_image, post_image, mask, metadata = next(it)
 
-    assert pre_image.shape == (32, 512, 512, 12)
+    assert pre_image.shape == (32, 12, 512, 512)
     assert pre_image.dtype == torch.int16
 
-    assert post_image.shape == (32, 512, 512, 12)
+    assert post_image.shape == (32, 12, 512, 512)
     assert post_image.dtype == torch.int16
 
     assert mask.shape == (32, 512, 512)
