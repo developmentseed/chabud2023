@@ -24,17 +24,31 @@ def _path_fn(urlpath: str) -> str:
 def _datatree_to_chip(hdf5_file: str) -> Iterator[xr.Dataset]:
     """
     Read a nested HDF5 file into a datatree.DataTree, and iterate over each
-    group which contains a chip of dimensions (512, 512, 12), to produce an
-    xarray.Dataset output.
+    group which contains a chip, to produce an xarray.Dataset output with
+    dimensions (12, 512, 512).
     """
     dt: datatree.DataTree = datatree.open_datatree(
         hdf5_file, engine="h5netcdf", phony_dims="access"
     )
+    # Loop through every 512x512 chip stored as groups in the DataTree
     for chip in dt.values():
-        _chip = chip.squeeze()
-        _chip.attrs["uuid"] = _chip.name
+        _chip: xr.Dataset = chip.squeeze().to_dataset()
+        _chip.attrs["uuid"] = chip.name
+
+        # Change from channel last to channel first
         # assert list(_chip.sizes.values()) == [512, 512, 12]  # Height, Width, Channel
-        yield _chip.to_dataset()
+        name_dict = {
+            old_name: new_name
+            for old_name, new_name in zip(
+                _chip.dims.keys(), ("height", "width", "channels")
+            )
+        }
+        _chip = _chip.rename(name_dict=name_dict)
+        _chip = _chip.transpose("channels", "height", "width")
+        # assert _chip.post_fire.shape == (12, 512, 512)
+        # assert _chip.mask.shape == (512, 512)
+
+        yield _chip
 
 
 def _has_pre_post_mask(dataset: xr.Dataset) -> bool:
