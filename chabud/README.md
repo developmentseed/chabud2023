@@ -7,3 +7,4 @@ using the [Lightning](https://lightning.ai/pytorch-lightning) framework and
 based on https://github.com/Lightning-AI/deep-learning-project-template.
 
 - :bricks: datapipe.py - Data pipeline to load Sentinel-2 optical imagery from HDF5 files and perform pre-processing
+- :spider_web: model.py - Code containing Neural Network model architecture
