@@ -5,5 +5,9 @@ __pycache__/
 data/**
 !data/**/
 
+# Pytorch Lightning checkpoints
+checkpoints/*.ckpt
+lightning_logs/
+
 # Unit test / coverage reports
 .pytest_cache/
