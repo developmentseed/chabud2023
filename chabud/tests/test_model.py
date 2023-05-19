@@ -1,7 +1,7 @@
 """
 Tests for ChaBuDNet.
 
-Based loosely on Pytorch Lightning's testing method described at
+Based loosely on Lightning's testing method described at
 https://github.com/Lightning-AI/lightning/blob/2.0.2/.github/CONTRIBUTING.md#how-to-add-new-tests
 """
 import lightning as L

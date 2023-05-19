@@ -1,8 +1,8 @@
 """
 ChaBuDNet model architecture code.
 
-Code structure adapted from Pytorch Lightning project seed at
-https://github.com/PyTorchLightning/deep-learning-project-template
+Code structure adapted from Lightning project seed at
+https://github.com/Lightning-AI/deep-learning-project-template
 """
 
 import lightning as L
@@ -19,9 +19,14 @@ class ChaBuDNet(L.LightningModule):
     Implemented using Lightning 2.0.
     """
 
-    def __init__(self):
+    def __init__(self, lr: float = 0.001):
         """
         Define layers of the ChaBuDNet model.
+
+        Parameters
+        ----------
+        lr : float
+            The learning rate for the Adam optimizer. Default is 0.001.
         """
         super().__init__()
 
@@ -127,7 +132,7 @@ class ChaBuDNet(L.LightningModule):
         Optimizing function used to reduce the loss, so that the predicted
         mask gets as close as possible to the groundtruth mask.
 
-        Using the Adam optimizer with a learning rate of 0.01. See:
+        Using the Adam optimizer with a learning rate of 0.001. See:
 
         - Kingma, D. P., & Ba, J. (2017). Adam: A Method for Stochastic
           Optimization. ArXiv:1412.6980 [Cs]. http://arxiv.org/abs/1412.6980
@@ -135,4 +140,4 @@ class ChaBuDNet(L.LightningModule):
         Documentation at:
         https://lightning.ai/docs/pytorch/2.0.2/common/lightning_module.html#configure-optimizers
         """
-        return torch.optim.Adam(params=self.parameters(), lr=0.01)
+        return torch.optim.Adam(params=self.parameters(), lr=self.hparams.lr)
