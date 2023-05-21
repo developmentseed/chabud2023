@@ -34,8 +34,8 @@ def cli_main(
         trainer_defaults=trainer_defaults,
         args=args,
     )
-    print("Done!")
 
 
 if __name__ == "__main__":
     cli_main()
+    print("Done!")

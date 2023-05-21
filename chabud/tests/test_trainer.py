@@ -11,9 +11,16 @@ from trainer import cli_main
 
 # %%
 @pytest.mark.parametrize("subcommand", ["fit", "validate"])
-def test_cli_main(subcommand):
+def test_cli_main(subcommand, capsys):
     """
     Ensure that running `python trainer.py` works with the subcommands `fit`
     and `validate`.
     """
-    cli_main(args=[subcommand, "--trainer.fast_dev_run=True"])
+    with pytest.raises(expected_exception=SystemExit, match="0"):
+        cli_main(args=[subcommand, "--print_config=skip_null"])
+
+    captured = capsys.readouterr()
+    assert "seed_everything:" in captured.out
+    assert "trainer:" in captured.out
+    assert "model:" in captured.out
+    assert "data:" in captured.out
