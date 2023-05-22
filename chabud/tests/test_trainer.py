@@ -10,7 +10,7 @@ from trainer import cli_main
 
 
 # %%
-@pytest.mark.parametrize("subcommand", ["fit", "validate"])
+@pytest.mark.parametrize("subcommand", ["fit", "validate", "test"])
 def test_cli_main(subcommand, capsys):
     """
     Ensure that running `python trainer.py` works with the subcommands `fit`
