@@ -12,6 +12,7 @@ dependencies:
   - python=3.11.3
   - python-graphviz=0.20.1
   - torchdata=0.6.0
+  - trimesh=3.21.7
   - xarray-datatree=0.0.12
   - pip:
       - typeshed-client==2.3.0
