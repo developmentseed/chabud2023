@@ -86,5 +86,11 @@ To train the model for a hundred epochs:
 
     python trainer.py fit --trainer.max_epochs=100
 
+To generate the CSV file of predicted masks on the validation set for
+[submission](https://huggingface.co/datasets/chabud-team/chabud-ecml-pkdd2023/blob/main/create_sample_submission.py)
+to https://huggingface.co/spaces/competitions/ChaBuD-ECML-PKDD2023.
+
+    python trainer.py test --model.submission_filepath=submission.csv
+
 More options can be found using `python trainer.py fit --help`, or at the
 [LightningCLI docs](https://lightning.ai/docs/pytorch/2.0.2/cli/lightning_cli.html).

@@ -207,7 +207,7 @@ class ChaBuDDataPipeModule(L.LightningDataModule):
 
         # Step 3 - Split chips into train/val sets based on fold attribute
         dp_val, dp_train = dp_chip.demux(
-            num_instances=2, classifier_fn=_train_val_fold, buffer_size=1024
+            num_instances=2, classifier_fn=_train_val_fold, buffer_size=2048
         )
 
         # Step 4 - Convert from xarray.Dataset to tuple of torch.Tensor objects
@@ -233,5 +233,11 @@ class ChaBuDDataPipeModule(L.LightningDataModule):
     def val_dataloader(self) -> torchdata.dataloader2.DataLoader2:
         """
         Loads the data used in the validation loop.
+        """
+        return torchdata.dataloader2.DataLoader2(datapipe=self.datapipe_val)
+
+    def test_dataloader(self) -> torchdata.dataloader2.DataLoader2:
+        """
+        Loads the data used in the test loop.
         """
         return torchdata.dataloader2.DataLoader2(datapipe=self.datapipe_val)

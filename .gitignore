@@ -4,6 +4,7 @@ __pycache__/
 # Data files and folders
 data/**
 !data/**/
+**/*.csv
 
 # Lightning checkpoints
 checkpoints/*.ckpt
