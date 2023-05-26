@@ -7,10 +7,17 @@ https://github.com/Lightning-AI/deep-learning-project-template
 
 import lightning as L
 import torch
+import torch.nn.functional as F
 import torchmetrics
+from pytorch_toolbelt.losses import (
+    DiceLoss,
+    BinaryFocalLoss,
+    BinaryLovaszLoss,
+)
+
+from chabud.tinycd_model import ChangeClassifier
 
 
-# %%
 class ChaBuDNet(L.LightningModule):
     """
     Neural network for performing Change detection for Burned area Delineation
@@ -19,7 +26,7 @@ class ChaBuDNet(L.LightningModule):
     Implemented using Lightning 2.0.
     """
 
-    def __init__(self, lr: float = 0.001):
+    def __init__(self, lr: float = 1e-3, model_name="tinycd"):
         """
         Define layers of the ChaBuDNet model.
 
@@ -33,38 +40,63 @@ class ChaBuDNet(L.LightningModule):
         # Save hyperparameters like lr, weight_decay, etc to self.hparams
         # https://pytorch-lightning.readthedocs.io/en/2.0.2/common/lightning_module.html#save-hyperparameters
         self.save_hyperparameters(logger=True)
-
-        # First input convolution with same number of groups as input channels
-        self.input_conv = torch.nn.Sequential(
-            torch.nn.Conv2d(
-                in_channels=24, out_channels=64, kernel_size=3, padding=1, groups=4
-            ),
-            torch.nn.SiLU(),
-        )
-
-        # TODO Get backbone architecture from some model zoo
-        # self.backbone = ()
-
-        # Output layers
-        self.output_conv = torch.nn.Conv2d(
-            in_channels=64, out_channels=1, kernel_size=3, padding=1, groups=1
-        )
+        self.model = self._init_model(model_name)
 
         # Loss functions
-        self.loss_bce = torch.nn.BCEWithLogitsLoss(reduction="mean")
+        self.loss_bce = torch.nn.BCEWithLogitsLoss(
+            pos_weight=torch.tensor(32.0), reduction="mean"
+        )
+        # self.loss_dice = DiceLoss(mode="binary", from_logits=True, smooth=0.1)
+        # self.loss_focal = BinaryFocalLoss(alpha=0.25, gamma=2.0)
 
         # Evaluation metrics to know how good the segmentation results are
         self.iou = torchmetrics.JaccardIndex(task="binary", num_classes=2)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def _init_model(self, name):
+        if name == "tinycd":
+            return ChangeClassifier(
+                bkbn_name="efficientnet_b4",
+                pretrained=True,
+                output_layer_bkbn="3",
+                freeze_backbone=False,
+            )
+        else:
+            return NotImplementedError(f"model {name} is not available")
+
+    def forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
         """
         Forward pass (Inference/Prediction).
         """
-        x_: torch.Tensor = self.input_conv(x)
-        # x_: torch.Tensor = self.backbone(x_)
-        y_hat: torch.Tensor = self.output_conv(x_)
+        y_hat: torch.Tensor = self.model(x1, x2)
 
-        return y_hat.squeeze()
+        return y_hat
+
+    def shared_step(
+        self,
+        batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict],
+        batch_idx: int,
+        phase: str,
+    ) -> torch.Tensor:
+        """
+        Logic for the neural network's loop.
+        """
+        # dtype = torch.float16 if "16" in self.trainer.precision else torch.float32
+        pre_img, post_img, mask, metadata = batch
+        # y_hat is logits
+        y_hat: torch.Tensor = self(x1=pre_img, x2=post_img).squeeze()
+        y_pred: torch.Tensor = (F.sigmoid(y_hat) > 0.5).detach().byte()
+
+        # Log loss and metrics
+        loss: torch.Tensor = self.loss_bce(y_hat, mask.float())
+        metric: torch.Tensor = self.iou(preds=y_pred, target=mask)
+        self.log_dict(
+            dictionary={f"{phase}/loss_dice": loss, f"{phase}/iou": metric},
+            on_step=True,
+            on_epoch=False,
+            prog_bar=True,
+        )
+
+        return loss
 
     def training_step(
         self,
@@ -74,28 +106,7 @@ class ChaBuDNet(L.LightningModule):
         """
         Logic for the neural network's training loop.
         """
-        dtype = torch.float16 if "16" in self.trainer.precision else torch.float32
-        pre_img, post_img, mask, metadata = batch
-
-        # Pass the image through neural network model to get predicted images
-        x: torch.Tensor = torch.concat(tensors=[pre_img, post_img], dim=1).to(
-            dtype=dtype
-        )
-        # assert x.shape == (32, 24, 512, 512)
-        y_hat: torch.Tensor = self(x=x)
-        # assert y_hat.shape == mask.shape == (32, 512, 512)
-
-        # Log training loss and metrics
-        loss: torch.Tensor = self.loss_bce(input=y_hat, target=mask.to(dtype=dtype))
-        metric: torch.Tensor = self.iou(preds=y_hat, target=mask)
-        self.log_dict(
-            dictionary={"train/loss_bce": loss, "train/iou": metric},
-            on_step=True,
-            on_epoch=False,
-            prog_bar=True,
-        )
-
-        return loss
+        return self.shared_step(batch, batch_idx, "train")
 
     def validation_step(
         self,
@@ -105,27 +116,7 @@ class ChaBuDNet(L.LightningModule):
         """
         Logic for the neural network's validation loop.
         """
-        dtype = torch.float16 if "16" in self.trainer.precision else torch.float32
-        pre_img, post_img, mask, metadata = batch
-
-        # Pass the image through neural network model to get predicted images
-        x: torch.Tensor = torch.concat(tensors=[pre_img, post_img], dim=1).to(
-            dtype=dtype
-        )
-        # assert x.shape == (32, 24, 512, 512)
-        y_hat: torch.Tensor = self(x=x)
-        # assert y_hat.shape == mask.shape == (32, 512, 512)
-
-        # Log validation loss and metrics
-        loss: torch.Tensor = self.loss_bce(input=y_hat, target=mask.to(dtype=dtype))
-        metric: torch.Tensor = self.iou(preds=y_hat, target=mask)
-        self.log_dict(
-            dictionary={"val/loss_bce": loss, "val/iou": metric},
-            on_step=True,
-            on_epoch=False,
-            prog_bar=True,
-        )
-        return loss
+        return self.shared_step(batch, batch_idx, "val")
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
         """

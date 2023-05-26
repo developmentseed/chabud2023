@@ -15,5 +15,8 @@ dependencies:
   - xarray-datatree=0.0.12
   - pip:
       - typeshed-client==2.3.0
+      - torchview==0.2.6
+      - torchinfo==1.8.0
+      - pytorch_toolbelt==0.6.3
 platforms:
   - linux-64

@@ -11,3 +11,10 @@ lightning_logs/
 
 # Unit test / coverage reports
 .pytest_cache/
+
+# Notebooks
+.ipynb_checkpoints
+nbs/
+
+# vscode
+.vscode/

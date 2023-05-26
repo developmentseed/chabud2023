@@ -6,6 +6,7 @@ from typing import Iterator
 
 import datatree
 import lightning as L
+import numpy as np
 import torch
 import torchdata
 import torchdata.dataloader2
@@ -87,10 +88,15 @@ def _pre_post_mask_tuple(
         mask image, and a Python dict containing metadata (e.g. filename, UUID,
         fold, comments).
     """
+    # return just the RGB bands for now
+    pre = dataset.pre_fire.astype(dtype=np.float32).data[[3, 2, 1], ...]
+    post = dataset.post_fire.astype(dtype=np.float32).data[[3, 2, 1], ...]
+    mask = dataset.mask.astype(dtype="uint8").data
+
     return (
-        torch.as_tensor(data=dataset.pre_fire.astype(dtype="int16").data),
-        torch.as_tensor(data=dataset.post_fire.astype(dtype="int16").data),
-        torch.as_tensor(data=dataset.mask.astype(dtype="uint8").data),
+        torch.as_tensor(data=pre),
+        torch.as_tensor(data=post),
+        torch.as_tensor(data=mask),
         {
             "filename": os.path.basename(dataset.encoding["source"]),
             **dataset.attrs,
@@ -113,7 +119,6 @@ def _stack_tensor_collate_fn(
     return pre_tensor, post_tensor, mask_tensor, metadata
 
 
-# %%
 class ChaBuDDataPipeModule(L.LightningDataModule):
     """
     Lightning DataModule for loading Hierarchical Data Format 5 (HDF5) files
@@ -138,7 +143,7 @@ class ChaBuDDataPipeModule(L.LightningDataModule):
             "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_1.hdf5",
             "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_2.hdf5",
         ],
-        batch_size: int = 32,
+        batch_size: int = 8,
     ):
         """
         Go from multiple HDF5 files to 512x512 chips!
@@ -182,7 +187,6 @@ class ChaBuDDataPipeModule(L.LightningDataModule):
         dp_urls: torchdata.datapipes.iter.IterDataPipe = (
             torchdata.datapipes.iter.IterableWrapper(iterable=self.hdf5_urls)
         )
-
         # Step 1 - Download and cache HDF5 files to the data/ folder
         # Also includes sha256 checksum verification
         dp_cache: torchdata.datapipes.iter.IterDataPipe = dp_urls.on_disk_cache(
@@ -206,8 +210,9 @@ class ChaBuDDataPipeModule(L.LightningDataModule):
         )
 
         # Step 3 - Split chips into train/val sets based on fold attribute
+        # buffer_size=-1 means that the entire dataset is buffered in memory
         dp_val, dp_train = dp_chip.demux(
-            num_instances=2, classifier_fn=_train_val_fold, buffer_size=1024
+            num_instances=2, classifier_fn=_train_val_fold, buffer_size=-1
         )
 
         # Step 4 - Convert from xarray.Dataset to tuple of torch.Tensor objects

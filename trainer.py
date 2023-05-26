@@ -16,11 +16,10 @@ from chabud.datapipe import ChaBuDDataPipeModule
 from chabud.model import ChaBuDNet
 
 
-# %%
 def cli_main(
     save_config_callback=None,
     seed_everything_default=42,
-    trainer_defaults: dict = {"logger": False, "precision": "bf16-mixed"},
+    trainer_defaults: dict = {"logger": False},
     args: ArgsType = None,
 ):
     """
