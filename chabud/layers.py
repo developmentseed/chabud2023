@@ -1,15 +1,7 @@
 from typing import List, Optional
 
 from torch import Tensor, reshape, stack
-
-from torch.nn import (
-    Conv2d,
-    InstanceNorm2d,
-    Module,
-    PReLU,
-    Sequential,
-    Upsample,
-)
+from torch.nn import Conv2d, InstanceNorm2d, Module, PReLU, Sequential, Upsample
 
 
 class PixelwiseLinear(Module):

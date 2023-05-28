@@ -4,7 +4,11 @@ Tests for ChaBuDNet.
 Based loosely on Lightning's testing method described at
 https://github.com/Lightning-AI/lightning/blob/2.0.2/.github/CONTRIBUTING.md#how-to-add-new-tests
 """
+import os
+import tempfile
+
 import lightning as L
+import pandas as pd
 import pytest
 import torch
 import torchdata
@@ -22,12 +26,12 @@ def fixture_datapipe() -> torchdata.datapipes.iter.IterDataPipe:
     datapipe = torchdata.datapipes.iter.IterableWrapper(
         iterable=[
             (
-                torch.randn(8, 12, 512, 512).to(dtype=torch.int16),  # pre_image
-                torch.randn(8, 12, 512, 512).to(dtype=torch.int16),  # post_image
+                torch.randn(2, 3, 512, 512).to(dtype=torch.float32),  # pre_image
+                torch.randn(2, 3, 512, 512).to(dtype=torch.float32),  # post_image
                 torch.randint(
-                    low=0, high=1, size=(8, 512, 512), dtype=torch.uint8
+                    low=0, high=1, size=(2, 512, 512), dtype=torch.uint8
                 ),  # mask
-                [{"uuid": None} for _ in range(8)],  # metadata
+                [{"uuid": None} for _ in range(2)],  # metadata
             )
         ]
     )
@@ -49,5 +53,12 @@ def test_model(datapipe):
     trainer: L.Trainer = L.Trainer(accelerator="auto", devices=1, fast_dev_run=True)
     trainer.fit(model=model, train_dataloaders=dataloader)
 
-    # Test
-    # TODO
+    # Test/Evaluation
+    with tempfile.NamedTemporaryFile(suffix=".csv") as tmpfile:
+        trainer.model.hparams.submission_filepath = tmpfile.name
+        trainer.test(model=model, dataloaders=dataloader)
+
+        assert os.path.exists(tmpfile.name)
+        df: pd.DataFrame = pd.read_csv(tmpfile.name)
+        assert len(df) > 0
+        assert df.columns.to_list() == ["id", "rle_mask", "index"]

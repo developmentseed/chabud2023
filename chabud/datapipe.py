@@ -89,9 +89,9 @@ def _pre_post_mask_tuple(
         fold, comments).
     """
     # return just the RGB bands for now
-    pre = dataset.pre_fire.astype(dtype=np.float32).data[[3, 2, 1], ...]
-    post = dataset.post_fire.astype(dtype=np.float32).data[[3, 2, 1], ...]
-    mask = dataset.mask.astype(dtype="uint8").data
+    pre = dataset.pre_fire.data[[3, 2, 1], ...].astype(dtype="float32")
+    post = dataset.post_fire.data[[3, 2, 1], ...].astype(dtype="float32")
+    mask = dataset.mask.data.astype(dtype="uint8")
 
     return (
         torch.as_tensor(data=pre),
@@ -238,5 +238,11 @@ class ChaBuDDataPipeModule(L.LightningDataModule):
     def val_dataloader(self) -> torchdata.dataloader2.DataLoader2:
         """
         Loads the data used in the validation loop.
+        """
+        return torchdata.dataloader2.DataLoader2(datapipe=self.datapipe_val)
+
+    def test_dataloader(self) -> torchdata.dataloader2.DataLoader2:
+        """
+        Loads the data used in the test loop.
         """
         return torchdata.dataloader2.DataLoader2(datapipe=self.datapipe_val)

@@ -2,12 +2,14 @@
 TinyCD model from: https://github.com/AndreaCodegoni/Tiny_model_4_CD/blob/main/models/change_classifier.py
 """
 
+import pdb
 from typing import List
+
 import torchvision
-from chabud.layers import MixingMaskAttentionBlock, PixelwiseLinear, UpMask, MixingBlock
 from torch import Tensor
 from torch.nn import Module, ModuleList, Sigmoid
-import pdb
+
+from chabud.layers import MixingBlock, MixingMaskAttentionBlock, PixelwiseLinear, UpMask
 
 
 class ChangeClassifier(Module):
