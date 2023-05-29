@@ -5,6 +5,8 @@ A Machine Learning data pipeline for the
 challenge at the [ECML/PKDD 2023](https://2023.ecmlpkdd.org/submissions/discovery-challenge/challenges)
 conference.
 
+[![Weights and Biases experiments](https://img.shields.io/static/v1?label=WandB&message=experiments&color=FFBE00&logo=weightsandbiases)](https://wandb.ai/devseed/chabud2023)
+
 # Getting started
 
 ### Quickstart
