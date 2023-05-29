@@ -1,3 +1,12 @@
+"""
+Modular block layers of the TinyCD model.
+
+Reference:
+- https://github.com/AndreaCodegoni/Tiny_model_4_CD/blob/main/models/layers.py
+- Codegoni, A., Lombardi, G., & Ferrari, A. (2022). TINYCD: A (Not So) Deep
+  Learning Model For Change Detection (arXiv:2207.13159). arXiv.
+  https://doi.org/10.48550/arXiv.2207.13159
+"""
 from typing import List, Optional
 
 from torch import Tensor, reshape, stack

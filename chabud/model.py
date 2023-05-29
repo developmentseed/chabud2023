@@ -33,6 +33,21 @@ class ChaBuDNet(L.LightningModule):
         """
         Define layers of the ChaBuDNet model.
 
+        Based on the TinyCD model with a Siamese U-Net architecture consisting
+        of an EfficientNet-b4 backbone, Mix and Attention Mask Block (MAMB) and
+        bottleneck mixing block, up-sampling decoder, and a pixel level
+        classifier (PW-MLP). Using Pytorch implementation from
+        https://github.com/AndreaCodegoni/Tiny_model_4_CD
+
+        |      Backbone     |          'Neck'           |         Head        |
+        |-------------------|---------------------------|---------------------|
+        |  EfficientNet-b4  |  MAMB + Mixing bottleneck |  Upsample + PW-MLP  |
+
+        Reference:
+        - Codegoni, A., Lombardi, G., & Ferrari, A. (2022). TINYCD: A (Not So)
+          Deep Learning Model For Change Detection (arXiv:2207.13159). arXiv.
+          https://doi.org/10.48550/arXiv.2207.13159
+
         Parameters
         ----------
         lr : float
