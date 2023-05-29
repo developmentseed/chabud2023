@@ -82,9 +82,13 @@ To quickly test the model on one batch in the validation set:
 
     python trainer.py validate --trainer.fast_dev_run=True
 
-To train the model for a hundred epochs:
+To train the model for a hundred epochs and log metrics to
+[WandB](https://wandb.ai/devseed/chabud2023):
 
-    python trainer.py fit --trainer.max_epochs=100
+    python trainer.py fit --trainer.max_epochs=100 \
+                          --trainer.logger=WandbLogger \
+                          --trainer.logger.entity=devseed \
+                          --trainer.logger.project=chabud2023
 
 To generate the CSV file of predicted masks on the validation set for
 [submission](https://huggingface.co/datasets/chabud-team/chabud-ecml-pkdd2023/blob/main/create_sample_submission.py)
