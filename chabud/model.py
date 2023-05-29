@@ -115,15 +115,17 @@ class ChaBuDNet(L.LightningModule):
         y_hat: torch.Tensor = self(x1=pre_img, x2=post_img).squeeze()
         y_pred: torch.Tensor = F.sigmoid(y_hat).detach().byte()
 
-        # Log loss and metrics
+        # Compute loss and metrics
         loss: torch.Tensor = self.loss_bce(input=y_hat, target=mask.float())
         metric: torch.Tensor = self.iou(preds=y_pred, target=mask)
+        loss_and_metric: dict = {f"{phase}/loss_dice": loss, f"{phase}/iou": metric}
+        # Report fit/val losses and Intersection over Union metric to the console
         self.log_dict(
-            dictionary={f"{phase}/loss_dice": loss, f"{phase}/iou": metric},
-            on_step=True,
-            on_epoch=False,
-            prog_bar=True,
+            dictionary=loss_and_metric, on_step=True, on_epoch=False, prog_bar=True
         )
+        # Log training loss and metrics to WandB (or other logger)
+        if self.logger is not None and hasattr(self.logger, "log_metrics"):
+            self.logger.log_metrics(metrics=loss_and_metric, step=self.global_step)
 
         return loss
 
