@@ -16,7 +16,7 @@ class ChangeClassifier(Module):
     def __init__(
         self,
         bkbn_name="efficientnet_b4",
-        pretrained=True,
+        weights=None,  # not using pretrained weights
         output_layer_bkbn="3",
         freeze_backbone=False,
     ):
@@ -24,7 +24,7 @@ class ChangeClassifier(Module):
 
         # Load the pretrained backbone according to parameters:
         self._backbone = _get_backbone(
-            bkbn_name, pretrained, output_layer_bkbn, freeze_backbone
+            bkbn_name, weights, output_layer_bkbn, freeze_backbone
         )
 
         # Initialize mixing blocks:
@@ -70,13 +70,9 @@ class ChangeClassifier(Module):
         return upping
 
 
-def _get_backbone(
-    bkbn_name, pretrained, output_layer_bkbn, freeze_backbone
-) -> ModuleList:
+def _get_backbone(bkbn_name, weights, output_layer_bkbn, freeze_backbone) -> ModuleList:
     # The whole model:
-    entire_model = getattr(torchvision.models, bkbn_name)(
-        pretrained=pretrained
-    ).features
+    entire_model = getattr(torchvision.models, bkbn_name)(weights=weights).features
 
     # Slicing it:
     derived_model = ModuleList([])

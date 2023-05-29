@@ -62,13 +62,15 @@ class ChaBuDNet(L.LightningModule):
         # self.loss_focal = BinaryFocalLoss(alpha=0.25, gamma=2.0)
 
         # Evaluation metrics to know how good the segmentation results are
-        self.iou = torchmetrics.JaccardIndex(task="binary", num_classes=2)
+        self.iou = torchmetrics.JaccardIndex(
+            task="binary", threshold=0.5, num_classes=2
+        )
 
     def _init_model(self, name):
         if name == "tinycd":
             return ChangeClassifier(
                 bkbn_name="efficientnet_b4",
-                pretrained=True,
+                weights=None,  # not using pretrained weights
                 output_layer_bkbn="3",
                 freeze_backbone=False,
             )
@@ -96,10 +98,10 @@ class ChaBuDNet(L.LightningModule):
         pre_img, post_img, mask, metadata = batch
         # y_hat is logits
         y_hat: torch.Tensor = self(x1=pre_img, x2=post_img).squeeze()
-        y_pred: torch.Tensor = (F.sigmoid(y_hat) > 0.5).detach().byte()
+        y_pred: torch.Tensor = F.sigmoid(y_hat).detach().byte()
 
         # Log loss and metrics
-        loss: torch.Tensor = self.loss_bce(y_hat, mask.float())
+        loss: torch.Tensor = self.loss_bce(input=y_hat, target=mask.float())
         metric: torch.Tensor = self.iou(preds=y_pred, target=mask)
         self.log_dict(
             dictionary={f"{phase}/loss_dice": loss, f"{phase}/iou": metric},
