@@ -6,9 +6,11 @@ data/**
 !data/**/
 **/*.csv
 
-# Lightning checkpoints
+# Checkpoints and logs
+chabud2023/
 checkpoints/*.ckpt
 lightning_logs/
+wandb/
 
 # Unit test / coverage reports
 .pytest_cache/
