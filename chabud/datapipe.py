@@ -210,16 +210,17 @@ class ChaBuDDataPipeModule(L.LightningDataModule):
         )
 
         # Step 3 - Split chips into train/val sets based on fold attribute
+        # buffer_size=-1 means that the entire dataset is buffered in memory
         dp_val, dp_train = dp_chip.demux(
-            num_instances=2, classifier_fn=_train_val_fold, buffer_size=2048
+            num_instances=2, classifier_fn=_train_val_fold, buffer_size=-1
         )
 
         # Step 4 - Convert from xarray.Dataset to tuple of torch.Tensor objects
-        # Also do batching, shuffling (for train set only) and tensor stacking
+        # Also do shuffling (for train set only), batching, and tensor stacking
         self.datapipe_train = (
-            dp_train.map(fn=_pre_post_mask_tuple)
+            dp_train.shuffle(buffer_size=100)
+            .map(fn=_pre_post_mask_tuple)
             .batch(batch_size=self.batch_size)
-            .in_batch_shuffle()
             .collate(collate_fn=_stack_tensor_collate_fn)
         )
         self.datapipe_val = (
