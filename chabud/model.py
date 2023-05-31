@@ -182,21 +182,19 @@ class ChaBuDNet(L.LightningModule):
 
         # Pass the image through neural network model to get predicted images
         logits: torch.Tensor = self(x1=pre_img, x2=post_img).squeeze()
-        y_pred: torch.Tensor = F.sigmoid(logits).detach().cpu()
+        y_pred: torch.Tensor = F.sigmoid(logits).detach()
 
         # Format predicted mask as binary run length encoding vector
         result: list = []
-        for pred_mask, uuid in zip(y_hat, pd.DataFrame(metadata)["uuid"]):
-            flat_binary_mask: np.ndarray = (
-                torch.sigmoid(input=pred_mask).to(bool).flatten().cpu().numpy()
-            )
+        for pred_mask, uuid in zip(y_pred, map(lambda x: x["uuid"], metadata)):
+            flat_binary_mask: np.ndarray = (y_pred > 0.5).cpu().flatten().numpy()
             brle: np.ndarray = trimesh.voxel.runlength.dense_to_brle(
                 dense_data=flat_binary_mask
             )
             encoded_prediction: dict = {
                 "id": uuid,
                 "rle_mask": brle,
-                "index": torch.arange(len(brle)),
+                "index": np.arange(len(brle)),
             }
             result.append(pd.DataFrame(data=encoded_prediction))
 
@@ -209,8 +207,8 @@ class ChaBuDNet(L.LightningModule):
             header=True if batch_idx == 0 else False,
         )
 
-        # Log validation loss and metrics
-        metric: torch.Tensor = self.iou(preds=y_hat, target=mask)
+        # Log test metrics
+        metric: torch.Tensor = self.iou(y_pred, mask)
         self.log_dict(
             dictionary={"test/iou": metric}, on_step=True, on_epoch=False, prog_bar=True
         )
