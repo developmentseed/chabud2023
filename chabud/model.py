@@ -77,11 +77,11 @@ class ChaBuDNet(L.LightningModule):
         self.model = self._init_model(model_name)
 
         # Loss functions
-        self.loss_bce = torch.nn.BCEWithLogitsLoss(
+        self.criterion = torch.nn.BCEWithLogitsLoss(
             pos_weight=torch.tensor(5.0), reduction="mean"
         )
-        # self.loss_dice = DiceLoss(mode="binary", from_logits=True, smooth=0.1)
-        # self.loss_focal = FocalLoss(mode="binary", alpha=0.25, gamma=2.0)
+        # self.criterion = DiceLoss(mode="binary", from_logits=True, smooth=0.1)
+        # self.criterion = FocalLoss(mode="binary", alpha=0.25, gamma=2.0)
 
         # Evaluation metrics to know how good the segmentation results are
         self.iou = BinaryJaccardIndex(threshold=0.5)
@@ -119,6 +119,7 @@ class ChaBuDNet(L.LightningModule):
         batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict],
         batch_idx: int,
         phase: str,
+        log: bool = True,
     ) -> torch.Tensor:
         """
         Logic for the neural network's loop.
@@ -129,16 +130,11 @@ class ChaBuDNet(L.LightningModule):
         y_pred: torch.Tensor = F.sigmoid(logits).detach()
 
         # Compute loss and metrics
-        loss: torch.Tensor = self.loss_bce(logits, mask.float())
+        loss: torch.Tensor = self.criterion(logits, mask.float())
         metric: torch.Tensor = self.iou(y_pred, mask)
-        loss_and_metric: dict = {f"{phase}/loss_bce": loss, f"{phase}/iou": metric}
-        # Report fit/val losses and Intersection over Union metric to the console
-        self.log_dict(
-            dictionary=loss_and_metric, on_step=True, on_epoch=False, prog_bar=True
-        )
-        # Log training loss and metrics to WandB (or other logger)
-        if self.logger is not None and hasattr(self.logger, "log_metrics"):
-            self.logger.log_metrics(metrics=loss_and_metric, step=self.global_step)
+
+        if log:
+            self._log(loss, metric, phase)
 
         return loss
 
@@ -150,7 +146,7 @@ class ChaBuDNet(L.LightningModule):
         """
         Logic for the neural network's training loop.
         """
-        return self.shared_step(batch, batch_idx, phase="train")
+        return self.shared_step(batch, batch_idx, phase="train", log=True)
 
     def validation_step(
         self,
@@ -160,7 +156,7 @@ class ChaBuDNet(L.LightningModule):
         """
         Logic for the neural network's validation loop.
         """
-        return self.shared_step(batch, batch_idx, phase="val")
+        return self.shared_step(batch, batch_idx, phase="val", log=True)
 
     def test_step(
         self,
@@ -207,11 +203,11 @@ class ChaBuDNet(L.LightningModule):
             header=True if batch_idx == 0 else False,
         )
 
-        # Log test metrics
+        # Log loss and metric
+        loss: torch.Tensor = self.criterion(logits, mask.float())
         metric: torch.Tensor = self.iou(y_pred, mask)
-        self.log_dict(
-            dictionary={"test/iou": metric}, on_step=True, on_epoch=False, prog_bar=True
-        )
+        self._log(loss, metric, "test")
+
         return metric
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
@@ -228,3 +224,23 @@ class ChaBuDNet(L.LightningModule):
         https://lightning.ai/docs/pytorch/2.0.2/common/lightning_module.html#configure-optimizers
         """
         return torch.optim.Adam(params=self.parameters(), lr=self.hparams.lr)
+
+    def _log(self, loss, metric, phase):
+        on_step = True if phase == "train" else False
+
+        self.log(
+            f"{phase}/loss",
+            loss,
+            on_step=on_step,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
+        )
+        self.log(
+            f"{phase}/iou",
+            metric,
+            on_step=on_step,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
+        )

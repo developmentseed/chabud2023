@@ -11,6 +11,7 @@ chabud2023/
 checkpoints/*.ckpt
 lightning_logs/
 wandb/
+logs/
 
 # Unit test / coverage reports
 .pytest_cache/
