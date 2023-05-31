@@ -20,21 +20,22 @@ def test_datapipemodule():
     datamodule: L.LightningDataModule = ChaBuDDataPipeModule(
         hdf5_urls=[
             "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_2.hdf5"
-        ]
+        ],
+        batch_size=8,
     )
     datamodule.setup()
 
     it = iter(datamodule.train_dataloader())
     pre_image, post_image, mask, metadata = next(it)
 
-    assert pre_image.shape == (32, 12, 512, 512)
-    assert pre_image.dtype == torch.int16
+    assert pre_image.shape == (8, 3, 512, 512)
+    assert pre_image.dtype == torch.float32
 
-    assert post_image.shape == (32, 12, 512, 512)
-    assert post_image.dtype == torch.int16
+    assert post_image.shape == (8, 3, 512, 512)
+    assert post_image.dtype == torch.float32
 
-    assert mask.shape == (32, 512, 512)
+    assert mask.shape == (8, 512, 512)
     assert mask.dtype == torch.uint8
 
-    assert len(metadata) == 32
+    assert len(metadata) == 8
     assert set(metadata[0].keys()) == {"filename", "uuid"}

@@ -26,12 +26,12 @@ def fixture_datapipe() -> torchdata.datapipes.iter.IterDataPipe:
     datapipe = torchdata.datapipes.iter.IterableWrapper(
         iterable=[
             (
-                torch.randn(8, 12, 512, 512).to(dtype=torch.int16),  # pre_image
-                torch.randn(8, 12, 512, 512).to(dtype=torch.int16),  # post_image
+                torch.randn(2, 3, 512, 512).to(dtype=torch.float32),  # pre_image
+                torch.randn(2, 3, 512, 512).to(dtype=torch.float32),  # post_image
                 torch.randint(
-                    low=0, high=1, size=(8, 512, 512), dtype=torch.uint8
+                    low=0, high=1, size=(2, 512, 512), dtype=torch.uint8
                 ),  # mask
-                [{"uuid": None} for _ in range(8)],  # metadata
+                [{"uuid": None} for _ in range(2)],  # metadata
             )
         ]
     )

@@ -12,10 +12,14 @@ dependencies:
   - python=3.11.3
   - python-graphviz=0.20.1
   - torchdata=0.6.0
+  - torchinfo==1.8.0
+  - torchview==0.2.6
   - trimesh=3.21.7
   - wandb=0.15.3
   - xarray-datatree=0.0.12
   - pip:
       - typeshed-client==2.3.0
+      - segmentation-models-pytorch==0.3.3
+      - matplotlib==3.7.1
 platforms:
   - linux-64

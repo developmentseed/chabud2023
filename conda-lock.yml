@@ -17,7 +17,7 @@ metadata:
   - url: nodefaults
     used_env_vars: []
   content_hash:
-    linux-64: c48e8486f8c0a84f9ba8daea4f69c384c359f0874e52c2dafcd808a8f63de8df
+    linux-64: b1d12bec8f576805bcbafb7181d216c1165b48658f93acc894e2857995d981c3
   platforms:
   - linux-64
   sources:
@@ -4235,6 +4235,19 @@ package:
   version: 3.0.38
 - category: main
   dependencies:
+    python: '>=3.6'
+    pytorch: '>=1.6'
+  hash:
+    md5: fba98fc95a945e2a6b93a77b39dd52dc
+    sha256: d0bc28b016099ef7c6a1edfd8eac54e991da167de1dff9f03da96af4fa95cc11
+  manager: conda
+  name: torchinfo
+  optional: false
+  platform: linux-64
+  url: https://conda.anaconda.org/conda-forge/noarch/torchinfo-1.8.0-pyhd8ed1ab_0.conda
+  version: 1.8.0
+- category: main
+  dependencies:
     packaging: ''
     python: '>=3.7'
     pytorch: '>=1.8.1'
@@ -4746,6 +4759,21 @@ package:
   version: 1.5.0
 - category: main
   dependencies:
+    graphviz: ''
+    python: '>=3.7'
+    python-graphviz: ''
+    pytorch: '>=1.7'
+  hash:
+    md5: 64f1779b36916eb45c0509586fd278fa
+    sha256: d19f5edc6a6cfb5d1fc5ec5d5f9f09da8dcce060a86e25a2810794095cae5133
+  manager: conda
+  name: torchview
+  optional: false
+  platform: linux-64
+  url: https://conda.anaconda.org/conda-forge/noarch/torchview-0.2.6-pyhd8ed1ab_0.conda
+  version: 0.2.6
+- category: main
+  dependencies:
     cachecontrol-with-filecache: '>=0.12.9'
     cachy: '>=0.3.0'
     click: '>=8.0'
@@ -5016,6 +5044,168 @@ package:
   platform: linux-64
   url: https://conda.anaconda.org/conda-forge/noarch/jupyterlab-3.6.3-pyhd8ed1ab_0.conda
   version: 3.6.3
+- dependencies: {}
+  hash:
+    sha256: 1bc7b47456256bdcc41069f5c658f232bd6e15bf4796d115f6ec98800793daff
+  manager: pip
+  name: cmake
+  platform: linux-64
+  url: https://files.pythonhosted.org/packages/1d/de/48d485d12285cd53e322fb7bdb263778820984d4be54c2bb2fb5eced5e87/cmake-3.26.3-py2.py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+  version: 3.26.3
+- dependencies: {}
+  hash:
+    sha256: 40b0224271f7832991874a6285e13da343963110f0d7c9c6e1e53f3ace901dc0
+  manager: pip
+  name: lit
+  platform: linux-64
+  url: https://files.pythonhosted.org/packages/63/ab/e4c5f26400970a3ca356d19e592af3a5f05a73d5f35470accb6600f84045/lit-16.0.5.tar.gz
+  version: 16.0.5
+- dependencies: {}
+  hash:
+    sha256: d32e4d75f94ddfb93ea0a5dda08389bcc65d8916a25cb9f37ac89edaeed3bded
+  manager: pip
+  name: nvidia-cublas-cu11
+  platform: linux-64
+  url: https://files.pythonhosted.org/packages/ce/41/fdeb62b5437996e841d83d7d2714ca75b886547ee8017ee2fe6ea409d983/nvidia_cublas_cu11-11.10.3.66-py3-none-manylinux1_x86_64.whl
+  version: 11.10.3.66
+- dependencies: {}
+  hash:
+    sha256: e0cfd9854e1f2edaa36ca20d21cd0bdd5dcfca4e3b9e130a082e05b33b6c5895
+  manager: pip
+  name: nvidia-cuda-cupti-cu11
+  platform: linux-64
+  url: https://files.pythonhosted.org/packages/e6/9d/dd0cdcd800e642e3c82ee3b5987c751afd4f3fb9cc2752517f42c3bc6e49/nvidia_cuda_cupti_cu11-11.7.101-py3-none-manylinux1_x86_64.whl
+  version: 11.7.101
+- dependencies: {}
+  hash:
+    sha256: 9f1562822ea264b7e34ed5930567e89242d266448e936b85bc97a3370feabb03
+  manager: pip
+  name: nvidia-cuda-nvrtc-cu11
+  platform: linux-64
+  url: https://files.pythonhosted.org/packages/ef/25/922c5996aada6611b79b53985af7999fc629aee1d5d001b6a22431e18fec/nvidia_cuda_nvrtc_cu11-11.7.99-2-py3-none-manylinux1_x86_64.whl
+  version: 11.7.99
+- dependencies: {}
+  hash:
+    sha256: cc768314ae58d2641f07eac350f40f99dcb35719c4faff4bc458a7cd2b119e31
+  manager: pip
+  name: nvidia-cuda-runtime-cu11
+  platform: linux-64
+  url: https://files.pythonhosted.org/packages/36/92/89cf558b514125d2ebd8344dd2f0533404b416486ff681d5434a5832a019/nvidia_cuda_runtime_cu11-11.7.99-py3-none-manylinux1_x86_64.whl
+  version: 11.7.99
+- dependencies: {}
+  hash:
+    sha256: 402f40adfc6f418f9dae9ab402e773cfed9beae52333f6d86ae3107a1b9527e7
+  manager: pip
+  name: nvidia-cudnn-cu11
+  platform: linux-64
+  url: https://files.pythonhosted.org/packages/dc/30/66d4347d6e864334da5bb1c7571305e501dcb11b9155971421bb7bb5315f/nvidia_cudnn_cu11-8.5.0.96-2-py3-none-manylinux1_x86_64.whl
+  version: 8.5.0.96
+- dependencies: {}
+  hash:
+    sha256: 222f9da70c80384632fd6035e4c3f16762d64ea7a843829cb278f98b3cb7dd81
+  manager: pip
+  name: nvidia-cufft-cu11
+  platform: linux-64
+  url: https://files.pythonhosted.org/packages/74/79/b912a77e38e41f15a0581a59f5c3548d1ddfdda3225936fb67c342719e7a/nvidia_cufft_cu11-10.9.0.58-py3-none-manylinux1_x86_64.whl
+  version: 10.9.0.58
+- dependencies: {}
+  hash:
+    sha256: eecb269c970fa599a2660c9232fa46aaccbf90d9170b96c462e13bcb4d129e2c
+  manager: pip
+  name: nvidia-curand-cu11
+  platform: linux-64
+  url: https://files.pythonhosted.org/packages/8f/11/af78d54b2420e64a4dd19e704f5bb69dcb5a6a3138b4465d6a48cdf59a21/nvidia_curand_cu11-10.2.10.91-py3-none-manylinux1_x86_64.whl
+  version: 10.2.10.91
+- dependencies: {}
+  hash:
+    sha256: 72fa7261d755ed55c0074960df5904b65e2326f7adce364cbe4945063c1be412
+  manager: pip
+  name: nvidia-cusolver-cu11
+  platform: linux-64
+  url: https://files.pythonhosted.org/packages/3e/77/66149e3153b19312fb782ea367f3f950123b93916a45538b573fe373570a/nvidia_cusolver_cu11-11.4.0.1-2-py3-none-manylinux1_x86_64.whl
+  version: 11.4.0.1
+- dependencies: {}
+  hash:
+    sha256: a3389de714db63321aa11fbec3919271f415ef19fda58aed7f2ede488c32733d
+  manager: pip
+  name: nvidia-cusparse-cu11
+  platform: linux-64
+  url: https://files.pythonhosted.org/packages/ea/6f/6d032cc1bb7db88a989ddce3f4968419a7edeafda362847f42f614b1f845/nvidia_cusparse_cu11-11.7.4.91-py3-none-manylinux1_x86_64.whl
+  version: 11.7.4.91
+- dependencies: {}
+  hash:
+    sha256: 5e5534257d1284b8e825bc3a182c6f06acd6eb405e9f89d49340e98cd8f136eb
+  manager: pip
+  name: nvidia-nccl-cu11
+  platform: linux-64
+  url: https://files.pythonhosted.org/packages/55/92/914cdb650b6a5d1478f83148597a25e90ea37d739bd563c5096b0e8a5f43/nvidia_nccl_cu11-2.14.3-py3-none-manylinux1_x86_64.whl
+  version: 2.14.3
+- dependencies: {}
+  hash:
+    sha256: b22c64eee426a62fc00952b507d6d29cf62b4c9df7a480fcc417e540e05fd5ac
+  manager: pip
+  name: nvidia-nvtx-cu11
+  platform: linux-64
+  url: https://files.pythonhosted.org/packages/23/d5/09493ff0e64fd77523afbbb075108f27a13790479efe86b9ffb4587671b5/nvidia_nvtx_cu11-11.7.91-py3-none-manylinux1_x86_64.whl
+  version: 11.7.91
+- category: main
+  dependencies: {}
+  hash:
+    sha256: cfcc2c53c06f2ccb8976fb5c71d448bdd0a07d26d8e07e321c103416444c7ad1
+  manager: pip
+  name: pillow
+  optional: false
+  platform: linux-64
+  url: https://files.pythonhosted.org/packages/3b/70/e9a45a2e9c58c23e023fcda5af9686f5b42c718cc9bc86194e0025cf0ec5/Pillow-9.5.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+  version: 9.5.0
+- category: main
+  dependencies:
+    numpy: '>=1.17.3'
+  hash:
+    sha256: ebfc0a3a2f57716e709028b992e4de7fd8752105d7a768531c4f434043c6f9ff
+  manager: pip
+  name: opencv-python
+  optional: false
+  platform: linux-64
+  url: https://files.pythonhosted.org/packages/29/35/a791b550cdeb4efd8b66e921748f2aff938868a29794489d93575d604a02/opencv_python-4.7.0.72-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+  version: 4.7.0.72
+- category: main
+  dependencies:
+    numpy: '>=1.19.5,<1.27.0'
+  hash:
+    sha256: 15a35c4242ec5f292c3dd364a7c71a61be87a3d4ddcc693372813c0b73c9af1d
+  manager: pip
+  name: scipy
+  optional: false
+  platform: linux-64
+  url: https://files.pythonhosted.org/packages/21/cd/fe2d4af234b80dc08c911ce63fdaee5badcdde3e9bcd9a68884580652ef0/scipy-1.10.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+  version: 1.10.1
+- category: main
+  dependencies:
+    numpy: '*'
+    pillow: '>=5.3.0,<8.3.0 || >=8.4.0'
+    requests: '*'
+    torch: 2.0.0
+  hash:
+    sha256: 13f71a3372d9168b01481a754ebaa171207f3dc455bf2fd86906c69222443738
+  manager: pip
+  name: torchvision
+  optional: false
+  platform: linux-64
+  url: https://files.pythonhosted.org/packages/03/fa/526fb78b6431d8fbcf4591a77e8c25ec004b196de535ac639cfc5c46116a/torchvision-0.15.1-cp311-cp311-manylinux1_x86_64.whl
+  version: 0.15.1
+- dependencies:
+    cmake: '*'
+    filelock: '*'
+    lit: '*'
+    torch: '*'
+  hash:
+    sha256: 226941c7b8595219ddef59a1fdb821e8c744289a132415ddd584facedeb475b1
+  manager: pip
+  name: triton
+  platform: linux-64
+  url: https://files.pythonhosted.org/packages/b7/cd/4aa0179919306f9c2e3e5308f269d20c094b2a4e2963b656e9405172763f/triton-2.0.0-1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+  version: 2.0.0
 - category: main
   dependencies:
     importlib-resources: '>=1.4.0'
@@ -5027,4 +5217,18 @@ package:
   platform: linux-64
   url: https://files.pythonhosted.org/packages/2f/e4/14dc927c45361de492b310f9edc5d4e6022d501f2fbb20edc5800d759369/typeshed_client-2.3.0-py3-none-any.whl
   version: 2.3.0
+- category: main
+  dependencies:
+    opencv-python: '>=4.1'
+    scipy: '>=1.4.0'
+    torch: '>=1.11.0'
+    torchvision: '*'
+  hash:
+    sha256: 32d8676f3beec069985a23d102bc6330ac7390c7041618ee8a3e6af3cad95564
+  manager: pip
+  name: pytorch-toolbelt
+  optional: false
+  platform: linux-64
+  url: https://files.pythonhosted.org/packages/5c/73/1c9f912e25491bceb63e5ce2d88c612069d4a761373fb3f1220d4724cacc/pytorch_toolbelt-0.6.3-py3-none-any.whl
+  version: 0.6.3
 version: 1
