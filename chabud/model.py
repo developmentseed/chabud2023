@@ -10,10 +10,17 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 import torchmetrics
+from torchmetrics.classification import BinaryJaccardIndex
 import trimesh.voxel.runlength
-from pytorch_toolbelt.losses import BinaryFocalLoss, BinaryLovaszLoss, DiceLoss
+import segmentation_models_pytorch as smp
+from segmentation_models_pytorch.losses import (
+    FocalLoss,
+    LovaszLoss,
+    DiceLoss,
+)
 
 from chabud.tinycd_model import ChangeClassifier
+from chabud.unet_model import UnetChangeClassifier
 
 
 class ChaBuDNet(L.LightningModule):
@@ -71,24 +78,24 @@ class ChaBuDNet(L.LightningModule):
 
         # Loss functions
         self.loss_bce = torch.nn.BCEWithLogitsLoss(
-            pos_weight=torch.tensor(32.0), reduction="mean"
+            pos_weight=torch.tensor(5.0), reduction="mean"
         )
         # self.loss_dice = DiceLoss(mode="binary", from_logits=True, smooth=0.1)
-        # self.loss_focal = BinaryFocalLoss(alpha=0.25, gamma=2.0)
+        # self.loss_focal = FocalLoss(mode="binary", alpha=0.25, gamma=2.0)
 
         # Evaluation metrics to know how good the segmentation results are
-        self.iou = torchmetrics.JaccardIndex(
-            task="binary", threshold=0.5, num_classes=2
-        )
+        self.iou = BinaryJaccardIndex(threshold=0.5)
 
     def _init_model(self, name):
         if name == "tinycd":
             return ChangeClassifier(
                 bkbn_name="efficientnet_b4",
-                weights=None,  # not using pretrained weights
+                pretrained=True,
                 output_layer_bkbn="3",
                 freeze_backbone=False,
             )
+        elif name == "unet":
+            return UnetChangeClassifier()
         else:
             return NotImplementedError(f"model {name} is not available")
 
@@ -96,7 +103,14 @@ class ChaBuDNet(L.LightningModule):
         """
         Forward pass (Inference/Prediction).
         """
-        y_hat: torch.Tensor = self.model(x1, x2)
+        if self.hparams.model_name == "tinycd":
+            y_hat: torch.Tensor = self.model(x1, x2)
+        elif self.hparams.model_name == "unet":
+            y_hat: torch.Tensor = self.model(x1, x2)
+        else:
+            raise NotImplementedError(
+                f"model {self.hparams.model_name} is not available"
+            )
 
         return y_hat
 
@@ -111,14 +125,13 @@ class ChaBuDNet(L.LightningModule):
         """
         # dtype = torch.float16 if "16" in self.trainer.precision else torch.float32
         pre_img, post_img, mask, metadata = batch
-        # y_hat is logits
-        y_hat: torch.Tensor = self(x1=pre_img, x2=post_img).squeeze()
-        y_pred: torch.Tensor = F.sigmoid(y_hat).detach().byte()
+        logits: torch.Tensor = self(x1=pre_img, x2=post_img).squeeze()
+        y_pred: torch.Tensor = F.sigmoid(logits).detach()
 
         # Compute loss and metrics
-        loss: torch.Tensor = self.loss_bce(input=y_hat, target=mask.float())
-        metric: torch.Tensor = self.iou(preds=y_pred, target=mask)
-        loss_and_metric: dict = {f"{phase}/loss_dice": loss, f"{phase}/iou": metric}
+        loss: torch.Tensor = self.loss_bce(logits, mask.float())
+        metric: torch.Tensor = self.iou(y_pred, mask)
+        loss_and_metric: dict = {f"{phase}/loss_bce": loss, f"{phase}/iou": metric}
         # Report fit/val losses and Intersection over Union metric to the console
         self.log_dict(
             dictionary=loss_and_metric, on_step=True, on_epoch=False, prog_bar=True
@@ -165,14 +178,11 @@ class ChaBuDNet(L.LightningModule):
         - https://huggingface.co/datasets/chabud-team/chabud-ecml-pkdd2023/blob/main/create_sample_submission.py
         - https://trimsh.org/trimesh.voxel.runlength.html#trimesh.voxel.runlength.dense_to_brle
         """
-        dtype = torch.float16 if "16" in self.trainer.precision else torch.float32
         pre_img, post_img, mask, metadata = batch
 
         # Pass the image through neural network model to get predicted images
-        # y_hat is logits
-        y_hat: torch.Tensor = self(x1=pre_img, x2=post_img).squeeze()
-        # y_pred: torch.Tensor = (F.sigmoid(y_hat) > 0.5).detach().byte()
-        # assert y_hat.shape == mask.shape == (32, 512, 512)
+        logits: torch.Tensor = self(x1=pre_img, x2=post_img).squeeze()
+        y_pred: torch.Tensor = F.sigmoid(logits).detach().cpu()
 
         # Format predicted mask as binary run length encoding vector
         result: list = []

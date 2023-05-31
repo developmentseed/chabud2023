@@ -13,7 +13,7 @@ from typing import List
 
 import torchvision
 from torch import Tensor
-from torch.nn import Module, ModuleList, Sigmoid
+from torch.nn import Module, ModuleList, Sigmoid, BatchNorm2d
 
 from chabud.layers import MixingBlock, MixingMaskAttentionBlock, PixelwiseLinear, UpMask
 
@@ -22,7 +22,7 @@ class ChangeClassifier(Module):
     def __init__(
         self,
         bkbn_name="efficientnet_b4",
-        weights=None,  # not using pretrained weights
+        pretrained=True,
         output_layer_bkbn="3",
         freeze_backbone=False,
     ):
@@ -30,8 +30,11 @@ class ChangeClassifier(Module):
 
         # Load the pretrained backbone according to parameters:
         self._backbone = _get_backbone(
-            bkbn_name, weights, output_layer_bkbn, freeze_backbone
+            bkbn_name, pretrained, output_layer_bkbn, freeze_backbone
         )
+
+        # Normalize the input:
+        self._normalize = BatchNorm2d(3)  # 3 number of bands
 
         # Initialize mixing blocks:
         self._first_mix = MixingMaskAttentionBlock(6, 3, [3, 10, 5], [10, 5, 1])
@@ -57,6 +60,7 @@ class ChangeClassifier(Module):
         self._classify = PixelwiseLinear([32, 16, 8], [16, 8, 1])
 
     def forward(self, ref: Tensor, test: Tensor) -> Tensor:
+        ref, test = self._normalize(ref), self._normalize(test)
         features = self._encode(ref, test)
         latents = self._decode(features)
         return self._classify(latents)
@@ -76,9 +80,13 @@ class ChangeClassifier(Module):
         return upping
 
 
-def _get_backbone(bkbn_name, weights, output_layer_bkbn, freeze_backbone) -> ModuleList:
+def _get_backbone(
+    bkbn_name, pretrained, output_layer_bkbn, freeze_backbone
+) -> ModuleList:
     # The whole model:
-    entire_model = getattr(torchvision.models, bkbn_name)(weights=weights).features
+    entire_model = getattr(torchvision.models, bkbn_name)(
+        pretrained=pretrained
+    ).features
 
     # Slicing it:
     derived_model = ModuleList([])
