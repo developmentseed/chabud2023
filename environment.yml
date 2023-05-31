@@ -19,7 +19,7 @@ dependencies:
   - xarray-datatree=0.0.12
   - pip:
       - typeshed-client==2.3.0
-      - segmentation-models-pytorch
-      - matplotlib
+      - segmentation-models-pytorch==0.3.3
+      - matplotlib==3.7.1
 platforms:
   - linux-64
