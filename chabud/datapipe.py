@@ -139,9 +139,9 @@ class ChaBuDDataPipeModule(L.LightningDataModule):
             # From https://huggingface.co/datasets/chabud-team/chabud-ecml-pkdd2023/tree/main
             "https://huggingface.co/datasets/chabud-team/chabud-ecml-pkdd2023/resolve/main/train_eval.hdf5",
             # From https://huggingface.co/datasets/chabud-team/chabud-extra/tree/main
-            "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_0.hdf5",
-            "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_1.hdf5",
-            "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_2.hdf5",
+            # "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_0.hdf5",
+            # "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_1.hdf5",
+            # "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_2.hdf5",
         ],
         batch_size: int = 8,
     ):
