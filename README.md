@@ -44,7 +44,7 @@ Finally, double-check that the libraries have been installed.
 This is for those who want full reproducibility of the virtual environment.
 Create a virtual environment with just Python and conda-lock installed first.
 
-    mamba create --name chabud python=3.11 conda-lock=1.4.0
+    mamba create --name chabud python=3.11 conda-lock=2.0.0
     mamba activate chabud
 
 Generate a unified [`conda-lock.yml`](https://github.com/conda/conda-lock) file

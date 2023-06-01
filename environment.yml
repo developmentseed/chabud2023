@@ -3,7 +3,7 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - conda-lock=1.4.0
+  - conda-lock=2.0.0
   - h5netcdf=1.1.0
   - jsonargparse=4.21.1
   - jupyterlab=3.6.3
