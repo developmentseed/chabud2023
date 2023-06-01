@@ -8,11 +8,21 @@ import lightning as L
 import numpy as np
 import pandas as pd
 import torch
+import torch.nn.functional as F
 import torchmetrics
+from torchmetrics.classification import BinaryJaccardIndex
 import trimesh.voxel.runlength
+import segmentation_models_pytorch as smp
+from segmentation_models_pytorch.losses import (
+    FocalLoss,
+    LovaszLoss,
+    DiceLoss,
+)
+
+from chabud.tinycd_model import ChangeClassifier
+from chabud.unet_model import UnetChangeClassifier
 
 
-# %%
 class ChaBuDNet(L.LightningModule):
     """
     Neural network for performing Change detection for Burned area Delineation
@@ -21,14 +31,38 @@ class ChaBuDNet(L.LightningModule):
     Implemented using Lightning 2.0.
     """
 
-    def __init__(self, lr: float = 0.001, submission_filepath: str = "submission.csv"):
+    def __init__(
+        self,
+        lr: float = 1e-3,
+        model_name="tinycd",
+        submission_filepath: str = "submission.csv",
+    ):
         """
         Define layers of the ChaBuDNet model.
+
+        Based on the TinyCD model with a Siamese U-Net architecture consisting
+        of an EfficientNet-b4 backbone, Mix and Attention Mask Block (MAMB) and
+        bottleneck mixing block, up-sampling decoder, and a pixel level
+        classifier (PW-MLP). Using Pytorch implementation from
+        https://github.com/AndreaCodegoni/Tiny_model_4_CD
+
+        |      Backbone     |          'Neck'           |         Head        |
+        |-------------------|---------------------------|---------------------|
+        |  EfficientNet-b4  |  MAMB + Mixing bottleneck |  Upsample + PW-MLP  |
+
+        Reference:
+        - Codegoni, A., Lombardi, G., & Ferrari, A. (2022). TINYCD: A (Not So)
+          Deep Learning Model For Change Detection (arXiv:2207.13159). arXiv.
+          https://doi.org/10.48550/arXiv.2207.13159
 
         Parameters
         ----------
         lr : float
             The learning rate for the Adam optimizer. Default is 0.001.
+
+        model_name : str
+            Name of the neural network model to use. Choose from ['tinycd'].
+            Default is 'tinycd'.
 
         submission_filepath : str
             Filepath of the CSV file to save the output used for submitting to
@@ -40,38 +74,69 @@ class ChaBuDNet(L.LightningModule):
         # Save hyperparameters like lr, weight_decay, etc to self.hparams
         # https://pytorch-lightning.readthedocs.io/en/2.0.2/common/lightning_module.html#save-hyperparameters
         self.save_hyperparameters(logger=True)
-
-        # First input convolution with same number of groups as input channels
-        self.input_conv = torch.nn.Sequential(
-            torch.nn.Conv2d(
-                in_channels=24, out_channels=64, kernel_size=3, padding=1, groups=4
-            ),
-            torch.nn.SiLU(),
-        )
-
-        # TODO Get backbone architecture from some model zoo
-        # self.backbone = ()
-
-        # Output layers
-        self.output_conv = torch.nn.Conv2d(
-            in_channels=64, out_channels=1, kernel_size=3, padding=1, groups=1
-        )
+        self.model = self._init_model(model_name)
 
         # Loss functions
-        self.loss_bce = torch.nn.BCEWithLogitsLoss(reduction="mean")
+        self.criterion = torch.nn.BCEWithLogitsLoss(
+            pos_weight=torch.tensor(5.0), reduction="mean"
+        )
+        # self.criterion = DiceLoss(mode="binary", from_logits=True, smooth=0.1)
+        # self.criterion = FocalLoss(mode="binary", alpha=0.25, gamma=2.0)
 
         # Evaluation metrics to know how good the segmentation results are
-        self.iou = torchmetrics.JaccardIndex(task="binary", num_classes=2)
+        self.iou = BinaryJaccardIndex(threshold=0.5)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def _init_model(self, name):
+        if name == "tinycd":
+            return ChangeClassifier(
+                bkbn_name="efficientnet_b4",
+                pretrained=True,
+                output_layer_bkbn="3",
+                freeze_backbone=False,
+            )
+        elif name == "unet":
+            return UnetChangeClassifier()
+        else:
+            return NotImplementedError(f"model {name} is not available")
+
+    def forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
         """
         Forward pass (Inference/Prediction).
         """
-        x_: torch.Tensor = self.input_conv(x)
-        # x_: torch.Tensor = self.backbone(x_)
-        y_hat: torch.Tensor = self.output_conv(x_)
+        if self.hparams.model_name == "tinycd":
+            y_hat: torch.Tensor = self.model(x1, x2)
+        elif self.hparams.model_name == "unet":
+            y_hat: torch.Tensor = self.model(x1, x2)
+        else:
+            raise NotImplementedError(
+                f"model {self.hparams.model_name} is not available"
+            )
 
-        return y_hat.squeeze()
+        return y_hat
+
+    def shared_step(
+        self,
+        batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict],
+        batch_idx: int,
+        phase: str,
+        log: bool = True,
+    ) -> torch.Tensor:
+        """
+        Logic for the neural network's loop.
+        """
+        # dtype = torch.float16 if "16" in self.trainer.precision else torch.float32
+        pre_img, post_img, mask, metadata = batch
+        logits: torch.Tensor = self(x1=pre_img, x2=post_img).squeeze()
+        y_pred: torch.Tensor = F.sigmoid(logits).detach()
+
+        # Compute loss and metrics
+        loss: torch.Tensor = self.criterion(logits, mask.float())
+        metric: torch.Tensor = self.iou(y_pred, mask)
+
+        if log:
+            self._log(loss, metric, phase)
+
+        return loss
 
     def training_step(
         self,
@@ -81,28 +146,7 @@ class ChaBuDNet(L.LightningModule):
         """
         Logic for the neural network's training loop.
         """
-        dtype = torch.float16 if "16" in self.trainer.precision else torch.float32
-        pre_img, post_img, mask, metadata = batch
-
-        # Pass the image through neural network model to get predicted images
-        x: torch.Tensor = torch.concat(tensors=[pre_img, post_img], dim=1).to(
-            dtype=dtype
-        )
-        # assert x.shape == (32, 24, 512, 512)
-        y_hat: torch.Tensor = self(x=x)
-        # assert y_hat.shape == mask.shape == (32, 512, 512)
-
-        # Log training loss and metrics
-        loss: torch.Tensor = self.loss_bce(input=y_hat, target=mask.to(dtype=dtype))
-        metric: torch.Tensor = self.iou(preds=y_hat, target=mask)
-        self.log_dict(
-            dictionary={"train/loss_bce": loss, "train/iou": metric},
-            on_step=True,
-            on_epoch=False,
-            prog_bar=True,
-        )
-
-        return loss
+        return self.shared_step(batch, batch_idx, phase="train", log=True)
 
     def validation_step(
         self,
@@ -112,27 +156,7 @@ class ChaBuDNet(L.LightningModule):
         """
         Logic for the neural network's validation loop.
         """
-        dtype = torch.float16 if "16" in self.trainer.precision else torch.float32
-        pre_img, post_img, mask, metadata = batch
-
-        # Pass the image through neural network model to get predicted images
-        x: torch.Tensor = torch.concat(tensors=[pre_img, post_img], dim=1).to(
-            dtype=dtype
-        )
-        # assert x.shape == (32, 24, 512, 512)
-        y_hat: torch.Tensor = self(x=x)
-        # assert y_hat.shape == mask.shape == (32, 512, 512)
-
-        # Log validation loss and metrics
-        loss: torch.Tensor = self.loss_bce(input=y_hat, target=mask.to(dtype=dtype))
-        metric: torch.Tensor = self.iou(preds=y_hat, target=mask)
-        self.log_dict(
-            dictionary={"val/loss_bce": loss, "val/iou": metric},
-            on_step=True,
-            on_epoch=False,
-            prog_bar=True,
-        )
-        return loss
+        return self.shared_step(batch, batch_idx, phase="val", log=True)
 
     def test_step(
         self,
@@ -150,30 +174,23 @@ class ChaBuDNet(L.LightningModule):
         - https://huggingface.co/datasets/chabud-team/chabud-ecml-pkdd2023/blob/main/create_sample_submission.py
         - https://trimsh.org/trimesh.voxel.runlength.html#trimesh.voxel.runlength.dense_to_brle
         """
-        dtype = torch.float16 if "16" in self.trainer.precision else torch.float32
         pre_img, post_img, mask, metadata = batch
 
         # Pass the image through neural network model to get predicted images
-        x: torch.Tensor = torch.concat(tensors=[pre_img, post_img], dim=1).to(
-            dtype=dtype
-        )
-        # assert x.shape == (32, 24, 512, 512)
-        y_hat: torch.Tensor = self(x=x)
-        # assert y_hat.shape == mask.shape == (32, 512, 512)
+        logits: torch.Tensor = self(x1=pre_img, x2=post_img).squeeze()
+        y_pred: torch.Tensor = F.sigmoid(logits).detach()
 
         # Format predicted mask as binary run length encoding vector
         result: list = []
-        for pred_mask, uuid in zip(y_hat, pd.DataFrame(metadata)["uuid"]):
-            flat_binary_mask: np.ndarray = (
-                torch.sigmoid(input=pred_mask).to(bool).flatten().cpu().numpy()
-            )
+        for pred_mask, uuid in zip(y_pred, map(lambda x: x["uuid"], metadata)):
+            flat_binary_mask: np.ndarray = (y_pred > 0.5).cpu().flatten().numpy()
             brle: np.ndarray = trimesh.voxel.runlength.dense_to_brle(
                 dense_data=flat_binary_mask
             )
             encoded_prediction: dict = {
                 "id": uuid,
                 "rle_mask": brle,
-                "index": torch.arange(len(brle)),
+                "index": np.arange(len(brle)),
             }
             result.append(pd.DataFrame(data=encoded_prediction))
 
@@ -186,11 +203,11 @@ class ChaBuDNet(L.LightningModule):
             header=True if batch_idx == 0 else False,
         )
 
-        # Log validation loss and metrics
-        metric: torch.Tensor = self.iou(preds=y_hat, target=mask)
-        self.log_dict(
-            dictionary={"test/iou": metric}, on_step=True, on_epoch=False, prog_bar=True
-        )
+        # Log loss and metric
+        loss: torch.Tensor = self.criterion(logits, mask.float())
+        metric: torch.Tensor = self.iou(y_pred, mask)
+        self._log(loss, metric, "test")
+
         return metric
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
@@ -207,3 +224,23 @@ class ChaBuDNet(L.LightningModule):
         https://lightning.ai/docs/pytorch/2.0.2/common/lightning_module.html#configure-optimizers
         """
         return torch.optim.Adam(params=self.parameters(), lr=self.hparams.lr)
+
+    def _log(self, loss, metric, phase):
+        on_step = True if phase == "train" else False
+
+        self.log(
+            f"{phase}/loss",
+            loss,
+            on_step=on_step,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
+        )
+        self.log(
+            f"{phase}/iou",
+            metric,
+            on_step=on_step,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
+        )
