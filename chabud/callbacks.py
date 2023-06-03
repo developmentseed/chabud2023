@@ -42,7 +42,7 @@ class LogIntermediatePredictions(Callback):
 
             for i in range(batch_size):
                 log_image = wandb.Image(
-                    post_img[i].permute(1, 2, 0).detach().numpy() / 6000,
+                    post_img[i].permute(1, 2, 0).detach().numpy() / 3000,
                     masks={
                         "prediction": {
                             "mask_data": mask[i].detach().cpu().numpy(),

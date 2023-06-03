@@ -62,7 +62,7 @@ def main():
 
     # MODEL
     model = ChaBuDNet(
-        lr=1e-3, model_name="tinycd", submission_filepath="submission.csv"
+        lr=1e-3, model_name="tinycd", submission_filepath=f"{name}-submission.csv"
     )
 
     debug = False

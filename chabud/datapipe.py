@@ -14,7 +14,6 @@ import torchdata.dataloader2
 import xarray as xr
 
 
-# %%
 def _path_fn(urlpath: str) -> str:
     """
     Get the filename from a urlpath and prepend it with 'data' so that it is
@@ -115,7 +114,9 @@ def _apply_augmentation(
         [
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
-            A.ShiftScaleRotate(p=0.8),
+            A.ShiftScaleRotate(
+                p=0.5, shift_limit=0.05, scale_limit=0.05, rotate_limit=10
+            ),
         ],
         additional_targets={"post": "image"},
     )
