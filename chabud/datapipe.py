@@ -4,6 +4,7 @@ LightningDataModule that loads directly from HDF5 using torch DataPipe.
 import os
 from typing import Iterator
 
+import albumentations as A
 import datatree
 import lightning as L
 import numpy as np
@@ -76,14 +77,14 @@ def _train_val_fold(chip: xr.Dataset) -> int:
 
 def _pre_post_mask_tuple(
     dataset: xr.Dataset,
-) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
     """
     From a single xarray.Dataset, split it into a tuple containing the
     pre/post/target tensors and a dictionary object containing metadata.
 
     Returns
     -------
-    data_tuple : tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]
+    data_tuple : tuple[np.ndarray, np.ndarray, np.ndarray, dict]
         A tuple with 4 objects, the pre-event image, the post-event image, the
         mask image, and a Python dict containing metadata (e.g. filename, UUID,
         fold, comments).
@@ -94,14 +95,40 @@ def _pre_post_mask_tuple(
     mask = dataset.mask.data.astype(dtype="uint8")
 
     return (
-        torch.as_tensor(data=pre),
-        torch.as_tensor(data=post),
-        torch.as_tensor(data=mask),
+        pre,
+        post,
+        mask,
         {
             "filename": os.path.basename(dataset.encoding["source"]),
             **dataset.attrs,
         },
     )
+
+
+def _apply_augmentation(
+    sample: tuple[np.ndarray, np.ndarray, np.ndarray, dict]
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
+    """
+    Apply augmentations to a single sample.
+    """
+    aug = A.Compose(
+        [
+            A.HorizontalFlip(p=0.5),
+            A.VerticalFlip(p=0.5),
+            A.ShiftScaleRotate(p=0.8),
+        ],
+        additional_targets={"post": "image"},
+    )
+    pre, post, mask, metadata = sample
+
+    # Apply augmentations - albumenations expects channel last
+    auged = aug(image=pre.transpose(1, 2, 0), post=post.transpose(1, 2, 0), mask=mask)
+    pre, post, mask = (
+        auged["image"].transpose(2, 0, 1),
+        auged["post"].transpose(2, 0, 1),
+        auged["mask"],
+    )
+    return (pre, post, mask, metadata)
 
 
 def _stack_tensor_collate_fn(
@@ -111,9 +138,15 @@ def _stack_tensor_collate_fn(
     Stack a list of torch.Tensor objects into a single torch.Tensor, and
     combine metadata attributes into a list of dicts.
     """
-    pre_tensor: torch.Tensor = torch.stack(tensors=[sample[0] for sample in samples])
-    post_tensor: torch.Tensor = torch.stack(tensors=[sample[1] for sample in samples])
-    mask_tensor: torch.Tensor = torch.stack(tensors=[sample[2] for sample in samples])
+    pre_tensor: torch.Tensor = torch.stack(
+        tensors=[torch.as_tensor(sample[0]) for sample in samples]
+    )
+    post_tensor: torch.Tensor = torch.stack(
+        tensors=[torch.as_tensor(sample[1]) for sample in samples]
+    )
+    mask_tensor: torch.Tensor = torch.stack(
+        tensors=[torch.as_tensor(sample[2]) for sample in samples]
+    )
     metadata: list[dict] = [sample[3] for sample in samples]
 
     return pre_tensor, post_tensor, mask_tensor, metadata
@@ -224,6 +257,7 @@ class ChaBuDDataPipeModule(L.LightningDataModule):
         self.datapipe_train = (
             dp_train.shuffle(buffer_size=100)
             .map(fn=_pre_post_mask_tuple)
+            .map(fn=_apply_augmentation)
             .batch(batch_size=self.batch_size)
             .collate(collate_fn=_stack_tensor_collate_fn)
         )
