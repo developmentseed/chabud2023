@@ -23,9 +23,10 @@ from lightning.pytorch.cli import ArgsType, LightningCLI
 from chabud.datapipe import ChaBuDDataPipeModule
 from chabud.model import ChaBuDNet
 from chabud.callbacks import LogIntermediatePredictions
+from chabud.utils import load_debugger
 
 
-def main():
+def main(stage: str = "train", ckpt_path: str = None):
     cwd = os.getcwd()
     (Path(cwd) / "logs").mkdir(exist_ok=True)
 
@@ -88,18 +89,21 @@ def main():
         log_every_n_steps=1,
     )
 
-    # TRAIN
-    print("TRAIN")
-    trainer.fit(
-        model,
-        train_dataloaders=dm.train_dataloader(),
-        val_dataloaders=dm.val_dataloader(),
-    )
+    if stage == "train":
+        # TRAIN
+        print("TRAIN")
+        trainer.fit(
+            model,
+            train_dataloaders=dm.train_dataloader(),
+            val_dataloaders=dm.val_dataloader(),
+        )
 
     # EVAL
     device = "cuda"
     print("EVAL")
-    model = ChaBuDNet.load_from_checkpoint(ckpt_cb.best_model_path).to(device)
+    model = ChaBuDNet.load_from_checkpoint(
+        ckpt_cb.best_model_path if ckpt_path is None else ckpt_path
+    ).to(device)
     model.eval()
     model.freeze()
     trainer.test(model, dataloaders=dm.test_dataloader())
@@ -126,5 +130,8 @@ def cli_main(
 
 if __name__ == "__main__":
     # cli_main()
-    main()
+    main(
+        stage="eval",
+        ckpt_path="logs/csv_logger/tinycd-baseline-16-mixed-shuffle-dataset-with-optimized-logs/version_0/checkpoints/epoch:17-step:252-loss:0.826-iou:0.459.ckpt",
+    )
     print("Done!")
