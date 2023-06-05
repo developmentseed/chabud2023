@@ -88,10 +88,51 @@ def _pre_post_mask_tuple(
         mask image, and a Python dict containing metadata (e.g. filename, UUID,
         fold, comments).
     """
-    # return just the RGB bands for now
-    pre = dataset.pre_fire.data[[3, 2, 1], ...].astype(dtype="float32")
-    post = dataset.post_fire.data[[3, 2, 1], ...].astype(dtype="float32")
+    # # return just the RGB bands for now
+    # pre = dataset.pre_fire.data[[3, 2, 1], ...].astype(dtype="float32")
+    # post = dataset.post_fire.data[[3, 2, 1], ...].astype(dtype="float32")
+    pre = dataset.pre_fire.data.astype(dtype="float32")
+    post = dataset.post_fire.data.astype(dtype="float32")
     mask = dataset.mask.data.astype(dtype="uint8")
+
+    # pre_g = dataset.pre_fire.data[2, ...].astype(dtype="float32")
+    # pre_r = dataset.pre_fire.data[3, ...].astype(dtype="float32")
+    # pre_nir = dataset.pre_fire.data[7, ...].astype(dtype="float32")
+    # pre_swir = dataset.pre_fire.data[11, ...].astype(dtype="float32")
+
+    # post_g = dataset.post_fire.data[2, ...].astype(dtype="float32")
+    # post_r = dataset.post_fire.data[3, ...].astype(dtype="float32")
+    # post_nir = dataset.post_fire.data[7, ...].astype(dtype="float32")
+    # post_swir = dataset.post_fire.data[11, ...].astype(dtype="float32")
+
+    # # NDVI: nir - r / nir + r
+    # pre_ndvi = np.nan_to_num(
+    #     (pre_nir - pre_r) / (pre_nir + pre_r), nan=0, posinf=0, neginf=0
+    # )
+    # # repeat the same for all normalized index
+    # post_ndvi = np.nan_to_num(
+    #     (post_nir - post_r) / (post_nir + post_r), nan=0, posinf=0, neginf=0
+    # )
+
+    # # NDWI: g - nir / g + nir
+    # pre_ndwi = np.nan_to_num(
+    #     (pre_g - pre_nir) / (pre_g + pre_nir), nan=0, posinf=0, neginf=0
+    # )
+    # post_ndwi = np.nan_to_num(
+    #     (post_g - post_nir) / (post_g + post_nir), nan=0, posinf=0, neginf=0
+    # )
+
+    # # NBR: nir - swir / nir + swir
+    # pre_nbr = np.nan_to_num(
+    #     (pre_nir - pre_swir) / (pre_nir + pre_swir), nan=0, posinf=0, neginf=0
+    # )
+    # post_nbr = np.nan_to_num(
+    #     (post_nir - post_swir) / (post_nir + post_swir), nan=0, posinf=0, neginf=0
+    # )
+
+    # # combine ndvi, ndwi, nbr into a 3-channel array
+    # pre = np.stack([pre_ndvi, pre_ndwi, pre_nbr], axis=0)
+    # post = np.stack([post_ndvi, post_ndwi, post_nbr], axis=0)
 
     return (
         pre,

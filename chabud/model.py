@@ -36,6 +36,7 @@ class ChaBuDNet(L.LightningModule):
         lr: float = 1e-3,
         model_name="tinycd",
         submission_filepath: str = "submission.csv",
+        batch_size: int = 8,
     ):
         """
         Define layers of the ChaBuDNet model.
@@ -90,8 +91,9 @@ class ChaBuDNet(L.LightningModule):
         if name == "tinycd":
             return ChangeClassifier(
                 bkbn_name="efficientnet_b4",
-                pretrained=True,
+                pretrained=False,
                 output_layer_bkbn="3",
+                in_channels=12,
                 freeze_backbone=False,
             )
         elif name == "unet":
@@ -235,6 +237,7 @@ class ChaBuDNet(L.LightningModule):
             on_epoch=True,
             prog_bar=True,
             logger=True,
+            batch_size=self.hparams.batch_size,
         )
         self.log(
             f"{phase}/iou",

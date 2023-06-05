@@ -12,7 +12,7 @@ import pdb
 from typing import List
 
 import torchvision
-from torch import Tensor
+from torch import Tensor, nn
 from torch.nn import Module, ModuleList, Sigmoid, BatchNorm2d
 
 from chabud.layers import MixingBlock, MixingMaskAttentionBlock, PixelwiseLinear, UpMask
@@ -22,22 +22,28 @@ class ChangeClassifier(Module):
     def __init__(
         self,
         bkbn_name="efficientnet_b4",
-        pretrained=True,
+        pretrained=False,
         output_layer_bkbn="3",
+        in_channels=3,
         freeze_backbone=False,
     ):
         super().__init__()
 
         # Load the pretrained backbone according to parameters:
         self._backbone = _get_backbone(
-            bkbn_name, pretrained, output_layer_bkbn, freeze_backbone
+            bkbn_name, in_channels, pretrained, output_layer_bkbn, freeze_backbone
         )
 
         # Normalize the input:
-        self._normalize = BatchNorm2d(3)  # 3 number of bands
+        self._normalize = BatchNorm2d(in_channels)  # 3 number of bands
 
         # Initialize mixing blocks:
-        self._first_mix = MixingMaskAttentionBlock(6, 3, [3, 10, 5], [10, 5, 1])
+        self._first_mix = MixingMaskAttentionBlock(
+            in_channels * 2,
+            in_channels,
+            [in_channels, in_channels * 4, in_channels * 2],
+            [in_channels * 4, in_channels * 2, 1],
+        )
         self._mixing_mask = ModuleList(
             [
                 MixingMaskAttentionBlock(48, 24, [24, 12, 6], [12, 6, 1]),
@@ -81,12 +87,23 @@ class ChangeClassifier(Module):
 
 
 def _get_backbone(
-    bkbn_name, pretrained, output_layer_bkbn, freeze_backbone
+    bkbn_name, in_channels, pretrained, output_layer_bkbn, freeze_backbone
 ) -> ModuleList:
     # The whole model:
     entire_model = getattr(torchvision.models, bkbn_name)(
         pretrained=pretrained
     ).features
+
+    # Change the number of input channels to the backbone
+    first_conv = entire_model[0][0]
+    entire_model[0][0] = nn.Conv2d(
+        in_channels=in_channels,
+        out_channels=first_conv.out_channels,
+        kernel_size=first_conv.kernel_size,
+        stride=first_conv.stride,
+        padding=first_conv.padding,
+        bias=first_conv.bias,
+    )
 
     # Slicing it:
     derived_model = ModuleList([])

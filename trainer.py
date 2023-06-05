@@ -57,12 +57,16 @@ def main():
     log_preds_cb = LogIntermediatePredictions(logger=wandb_logger)
 
     # DATAMODULE
-    dm = ChaBuDDataPipeModule(batch_size=20)
+    batch_size = 16
+    dm = ChaBuDDataPipeModule(batch_size=batch_size)
     dm.setup()
 
     # MODEL
     model = ChaBuDNet(
-        lr=1e-3, model_name="tinycd", submission_filepath=f"{name}-submission.csv"
+        lr=1e-3,
+        model_name="tinycd",
+        submission_filepath=f"{name}-submission.csv",
+        batch_size=batch_size,
     )
 
     debug = False
@@ -74,7 +78,7 @@ def main():
         devices=1,
         accelerator="gpu",
         precision="16-mixed",
-        max_epochs=2 if debug else 20,
+        max_epochs=2 if debug else 30,
         accumulate_grad_batches=1,
         logger=[
             csv_logger,
