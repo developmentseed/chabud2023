@@ -15,6 +15,10 @@ Launch on regular [Binder](https://mybinder.readthedocs.io/en/latest).
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/developmentseed/chabud2023/main)
 
+Launch on [SageMaker Studio Lab](https://studiolab.sagemaker.aws).
+
+[![Open in SageMaker Studio Lab](https://studiolab.sagemaker.aws/studiolab.svg)](https://studiolab.sagemaker.aws/import/github/developmentseed/chabud2023/blob/main/train_chabud.ipynb)
+
 ## Installation
 
 ### Basic
