@@ -11,17 +11,11 @@ conference.
 
 ### Quickstart
 
-Launch on regular [Binder](https://mybinder.readthedocs.io/en/latest).
+Launch into a [JupyterLab](https://jupyterlab.readthedocs.io) environment on
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/developmentseed/chabud2023/main)
-
-Launch on [SageMaker Studio Lab](https://studiolab.sagemaker.aws).
-
-[![Open in SageMaker Studio Lab](https://studiolab.sagemaker.aws/studiolab.svg)](https://studiolab.sagemaker.aws/import/github/developmentseed/chabud2023/blob/main/train_chabud.ipynb)
-
-Launch on [Planetary Computer](https://planetarycomputer.microsoft.com).
-
-[![Open on Planetary Computer](https://img.shields.io/badge/Open-Planetary%20Computer-black?style=flat&logo=microsoft)](https://pccompute.westeurope.cloudapp.azure.com/compute/hub/user-redirect/git-pull?repo=https%3A%2F%2Fgithub.com%2Fdevelopmentseed%2Fchabud2023&urlpath=lab%2Ftree%2Fchabud2023%2Ftrain_chabud.ipynb&branch=main)
+| [Binder](https://mybinder.readthedocs.io/en/latest) | [SageMaker Studio Lab](https://studiolab.sagemaker.aws) | [Planetary  Computer](https://planetarycomputer.microsoft.com) |
+|:--:|:--:|:--:|
+| [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/developmentseed/chabud2023/main) | [![Open in SageMaker Studio Lab](https://studiolab.sagemaker.aws/studiolab.svg)](https://studiolab.sagemaker.aws/import/github/developmentseed/chabud2023/blob/main/train_chabud.ipynb) | [![Open on Planetary Computer](https://img.shields.io/badge/Open-Planetary%20Computer-black?style=flat&logo=microsoft)](https://pccompute.westeurope.cloudapp.azure.com/compute/hub/user-redirect/git-pull?repo=https%3A%2F%2Fgithub.com%2Fdevelopmentseed%2Fchabud2023&urlpath=lab%2Ftree%2Fchabud2023%2Ftrain_chabud.ipynb&branch=main) |
 
 ## Installation
 
