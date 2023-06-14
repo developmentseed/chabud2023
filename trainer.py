@@ -21,9 +21,9 @@ from lightning.pytorch.loggers import CSVLogger, WandbLogger
 from lightning.pytorch.cli import ArgsType, LightningCLI
 
 from chabud.datapipe import ChaBuDDataPipeModule
+from chabud.dataset import ChaBuDDataModule
 from chabud.model import ChaBuDNet
 from chabud.callbacks import LogIntermediatePredictions
-from chabud.utils import load_debugger
 
 
 def main(stage: str = "train", ckpt_path: str = None):
@@ -50,7 +50,8 @@ def main(stage: str = "train", ckpt_path: str = None):
     ckpt_cb = ModelCheckpoint(
         monitor="val/iou",
         mode="max",
-        save_top_k=2,
+        save_top_k=1,
+        save_last=True,
         verbose=True,
         filename="epoch:{epoch}-step:{step}-loss:{val/loss:.3f}-iou:{val/iou:.3f}",
         auto_insert_metric_name=False,
@@ -59,7 +60,11 @@ def main(stage: str = "train", ckpt_path: str = None):
 
     # DATAMODULE
     batch_size = 16
-    dm = ChaBuDDataPipeModule(batch_size=batch_size)
+    # dm = ChaBuDDataPipeModule(batch_size=batch_size)
+    dm = ChaBuDDataModule(
+        data_dir=Path("./data"),
+        batch_size=batch_size,
+    )
     dm.setup()
 
     # MODEL
@@ -85,7 +90,7 @@ def main(stage: str = "train", ckpt_path: str = None):
             csv_logger,
             wandb_logger,
         ],
-        callbacks=[ckpt_cb, log_preds_cb],
+        callbacks=[lr_cb, ckpt_cb, log_preds_cb],
         log_every_n_steps=1,
     )
 
@@ -96,6 +101,7 @@ def main(stage: str = "train", ckpt_path: str = None):
             model,
             train_dataloaders=dm.train_dataloader(),
             val_dataloaders=dm.val_dataloader(),
+            ckpt_path="last",
         )
 
     # EVAL
@@ -130,8 +136,9 @@ def cli_main(
 
 if __name__ == "__main__":
     # cli_main()
-    main(
-        stage="eval",
-        ckpt_path="logs/csv_logger/tinycd-baseline-16-mixed-shuffle-dataset-with-optimized-logs/version_0/checkpoints/epoch:17-step:252-loss:0.826-iou:0.459.ckpt",
-    )
+    # main(
+    #     stage="eval",
+    #     ckpt_path="logs/csv_logger/12channel/version_0/checkpoints/epoch:23-step:432-loss:0.595-iou:0.632.ckpt",
+    # )
+    main(stage="train")
     print("Done!")

@@ -66,8 +66,10 @@ def _train_val_fold(chip: xr.Dataset) -> int:
     Fold 0 is used for validation, Fold 1 and above is for training.
     See https://huggingface.co/datasets/chabud-team/chabud-ecml-pkdd2023/discussions/3
     """
-    if "fold" not in chip.attrs:  # no 'fold' attribute, use for training too
-        return 1  # Training set
+    if (
+        "fold" not in chip.attrs
+    ):  # no 'fold' attribute, split between train,val with 70/30 split
+        return np.random.rand() > 0.3
     if chip.attrs["fold"] == 0:
         return 0  # Validation set
     elif chip.attrs["fold"] >= 1:
@@ -214,8 +216,8 @@ class ChaBuDDataPipeModule(L.LightningDataModule):
             # From https://huggingface.co/datasets/chabud-team/chabud-ecml-pkdd2023/tree/main
             "https://huggingface.co/datasets/chabud-team/chabud-ecml-pkdd2023/resolve/main/train_eval.hdf5",
             # From https://huggingface.co/datasets/chabud-team/chabud-extra/tree/main
-            # "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_0.hdf5",
-            # "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_1.hdf5",
+            "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_0.hdf5",
+            "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_1.hdf5",
             # "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_2.hdf5",
             # "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_3.hdf5",
             # "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_4.hdf5",
@@ -297,7 +299,7 @@ class ChaBuDDataPipeModule(L.LightningDataModule):
         # Step 4 - Convert from xarray.Dataset to tuple of torch.Tensor objects
         # Also do shuffling (for train set only), batching, and tensor stacking
         self.datapipe_train = (
-            dp_train.shuffle(buffer_size=100)
+            dp_train.shuffle(buffer_size=2000)
             .map(fn=_pre_post_mask_tuple)
             .map(fn=_apply_augmentation)
             .batch(batch_size=self.batch_size)
