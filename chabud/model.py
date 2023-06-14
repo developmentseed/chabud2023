@@ -20,7 +20,7 @@ from segmentation_models_pytorch.losses import (
 )
 
 from chabud.tinycd_model import ChangeClassifier
-from chabud.unet_model import UnetChangeClassifier
+from chabud.unet_model import DeepLabChangeClassifier
 
 
 class ChaBuDNet(L.LightningModule):
@@ -36,6 +36,7 @@ class ChaBuDNet(L.LightningModule):
         lr: float = 1e-3,
         model_name="tinycd",
         submission_filepath: str = "submission.csv",
+        batch_size: int = 8,
     ):
         """
         Define layers of the ChaBuDNet model.
@@ -77,10 +78,10 @@ class ChaBuDNet(L.LightningModule):
         self.model = self._init_model(model_name)
 
         # Loss functions
-        self.criterion = torch.nn.BCEWithLogitsLoss(
-            pos_weight=torch.tensor(5.0), reduction="mean"
-        )
-        # self.criterion = DiceLoss(mode="binary", from_logits=True, smooth=0.1)
+        # self.criterion = torch.nn.BCEWithLogitsLoss(
+        #     pos_weight=torch.tensor(5.0), reduction="mean"
+        # )
+        self.criterion = DiceLoss(mode="binary", from_logits=True, smooth=0.1)
         # self.criterion = FocalLoss(mode="binary", alpha=0.25, gamma=2.0)
 
         # Evaluation metrics to know how good the segmentation results are
@@ -90,12 +91,13 @@ class ChaBuDNet(L.LightningModule):
         if name == "tinycd":
             return ChangeClassifier(
                 bkbn_name="efficientnet_b4",
-                pretrained=True,
+                pretrained=False,
                 output_layer_bkbn="3",
+                in_channels=12,
                 freeze_backbone=False,
             )
         elif name == "unet":
-            return UnetChangeClassifier()
+            return DeepLabChangeClassifier()
         else:
             return NotImplementedError(f"model {name} is not available")
 
@@ -116,7 +118,7 @@ class ChaBuDNet(L.LightningModule):
 
     def shared_step(
         self,
-        batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict],
+        batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor, str],
         batch_idx: int,
         phase: str,
         log: bool = True,
@@ -140,7 +142,7 @@ class ChaBuDNet(L.LightningModule):
 
     def training_step(
         self,
-        batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict],
+        batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor, str],
         batch_idx: int,
     ) -> torch.Tensor:
         """
@@ -150,7 +152,7 @@ class ChaBuDNet(L.LightningModule):
 
     def validation_step(
         self,
-        batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict],
+        batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor, str],
         batch_idx: int,
     ) -> torch.Tensor:
         """
@@ -160,7 +162,7 @@ class ChaBuDNet(L.LightningModule):
 
     def test_step(
         self,
-        batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict],
+        batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor, str],
         batch_idx: int,
     ) -> torch.Tensor:
         """
@@ -179,11 +181,18 @@ class ChaBuDNet(L.LightningModule):
         # Pass the image through neural network model to get predicted images
         logits: torch.Tensor = self(x1=pre_img, x2=post_img).squeeze()
         y_pred: torch.Tensor = F.sigmoid(logits).detach()
+        # Log loss and metric
+        loss: torch.Tensor = self.criterion(logits, mask.float())
+        # IOU expects y_pred between 0 & 1
+        metric: torch.Tensor = self.iou(y_pred, mask)
+        self._log(loss, metric, "test")
+
+        y_pred = (y_pred > 0.5).cpu().numpy()
 
         # Format predicted mask as binary run length encoding vector
         result: list = []
-        for pred_mask, uuid in zip(y_pred, map(lambda x: x["uuid"], metadata)):
-            flat_binary_mask: np.ndarray = (y_pred > 0.5).cpu().flatten().numpy()
+        for pred_mask, uuid in zip(y_pred, metadata):
+            flat_binary_mask: np.ndarray = pred_mask.flatten()
             brle: np.ndarray = trimesh.voxel.runlength.dense_to_brle(
                 dense_data=flat_binary_mask
             )
@@ -203,11 +212,6 @@ class ChaBuDNet(L.LightningModule):
             header=True if batch_idx == 0 else False,
         )
 
-        # Log loss and metric
-        loss: torch.Tensor = self.criterion(logits, mask.float())
-        metric: torch.Tensor = self.iou(y_pred, mask)
-        self._log(loss, metric, "test")
-
         return metric
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
@@ -223,7 +227,16 @@ class ChaBuDNet(L.LightningModule):
         Documentation at:
         https://lightning.ai/docs/pytorch/2.0.2/common/lightning_module.html#configure-optimizers
         """
-        return torch.optim.Adam(params=self.parameters(), lr=self.hparams.lr)
+        optimizer = torch.optim.Adam(params=self.parameters(), lr=self.hparams.lr)
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(
+            optimizer,
+            milestones=[15, 25],
+            gamma=0.1,
+        )
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": scheduler,
+        }
 
     def _log(self, loss, metric, phase):
         on_step = True if phase == "train" else False
@@ -235,6 +248,7 @@ class ChaBuDNet(L.LightningModule):
             on_epoch=True,
             prog_bar=True,
             logger=True,
+            batch_size=self.hparams.batch_size,
         )
         self.log(
             f"{phase}/iou",
@@ -243,4 +257,5 @@ class ChaBuDNet(L.LightningModule):
             on_epoch=True,
             prog_bar=True,
             logger=True,
+            batch_size=self.hparams.batch_size,
         )

@@ -21,11 +21,12 @@ from lightning.pytorch.loggers import CSVLogger, WandbLogger
 from lightning.pytorch.cli import ArgsType, LightningCLI
 
 from chabud.datapipe import ChaBuDDataPipeModule
+from chabud.dataset import ChaBuDDataModule
 from chabud.model import ChaBuDNet
 from chabud.callbacks import LogIntermediatePredictions
 
 
-def main():
+def main(stage: str = "train", ckpt_path: str = None):
     cwd = os.getcwd()
     (Path(cwd) / "logs").mkdir(exist_ok=True)
 
@@ -49,7 +50,8 @@ def main():
     ckpt_cb = ModelCheckpoint(
         monitor="val/iou",
         mode="max",
-        save_top_k=2,
+        save_top_k=1,
+        save_last=True,
         verbose=True,
         filename="epoch:{epoch}-step:{step}-loss:{val/loss:.3f}-iou:{val/iou:.3f}",
         auto_insert_metric_name=False,
@@ -57,12 +59,20 @@ def main():
     log_preds_cb = LogIntermediatePredictions(logger=wandb_logger)
 
     # DATAMODULE
-    dm = ChaBuDDataPipeModule(batch_size=20)
+    batch_size = 16
+    # dm = ChaBuDDataPipeModule(batch_size=batch_size)
+    dm = ChaBuDDataModule(
+        data_dir=Path("./data"),
+        batch_size=batch_size,
+    )
     dm.setup()
 
     # MODEL
     model = ChaBuDNet(
-        lr=1e-3, model_name="tinycd", submission_filepath="submission.csv"
+        lr=1e-3,
+        model_name="tinycd",
+        submission_filepath=f"{name}-submission.csv",
+        batch_size=batch_size,
     )
 
     debug = False
@@ -74,28 +84,32 @@ def main():
         devices=1,
         accelerator="gpu",
         precision="16-mixed",
-        max_epochs=2 if debug else 20,
+        max_epochs=2 if debug else 30,
         accumulate_grad_batches=1,
         logger=[
             csv_logger,
             wandb_logger,
         ],
-        callbacks=[ckpt_cb, log_preds_cb],
+        callbacks=[lr_cb, ckpt_cb, log_preds_cb],
         log_every_n_steps=1,
     )
 
-    # TRAIN
-    print("TRAIN")
-    trainer.fit(
-        model,
-        train_dataloaders=dm.train_dataloader(),
-        val_dataloaders=dm.val_dataloader(),
-    )
+    if stage == "train":
+        # TRAIN
+        print("TRAIN")
+        trainer.fit(
+            model,
+            train_dataloaders=dm.train_dataloader(),
+            val_dataloaders=dm.val_dataloader(),
+            ckpt_path="last",
+        )
 
     # EVAL
     device = "cuda"
     print("EVAL")
-    model = ChaBuDNet.load_from_checkpoint(ckpt_cb.best_model_path).to(device)
+    model = ChaBuDNet.load_from_checkpoint(
+        ckpt_cb.best_model_path if ckpt_path is None else ckpt_path
+    ).to(device)
     model.eval()
     model.freeze()
     trainer.test(model, dataloaders=dm.test_dataloader())
@@ -122,5 +136,9 @@ def cli_main(
 
 if __name__ == "__main__":
     # cli_main()
-    main()
+    # main(
+    #     stage="eval",
+    #     ckpt_path="logs/csv_logger/12channel/version_0/checkpoints/epoch:23-step:432-loss:0.595-iou:0.632.ckpt",
+    # )
+    main(stage="train")
     print("Done!")

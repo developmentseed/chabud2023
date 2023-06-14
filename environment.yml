@@ -21,5 +21,6 @@ dependencies:
   - pip:
       - typeshed-client==2.3.0
       - segmentation-models-pytorch==0.3.3
+      - albumentations==1.3.0
 platforms:
   - linux-64

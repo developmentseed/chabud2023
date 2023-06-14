@@ -4,6 +4,7 @@ LightningDataModule that loads directly from HDF5 using torch DataPipe.
 import os
 from typing import Iterator
 
+import albumentations as A
 import datatree
 import lightning as L
 import numpy as np
@@ -13,7 +14,6 @@ import torchdata.dataloader2
 import xarray as xr
 
 
-# %%
 def _path_fn(urlpath: str) -> str:
     """
     Get the filename from a urlpath and prepend it with 'data' so that it is
@@ -66,8 +66,10 @@ def _train_val_fold(chip: xr.Dataset) -> int:
     Fold 0 is used for validation, Fold 1 and above is for training.
     See https://huggingface.co/datasets/chabud-team/chabud-ecml-pkdd2023/discussions/3
     """
-    if "fold" not in chip.attrs:  # no 'fold' attribute, use for training too
-        return 1  # Training set
+    if (
+        "fold" not in chip.attrs
+    ):  # no 'fold' attribute, split between train,val with 70/30 split
+        return np.random.rand() > 0.3
     if chip.attrs["fold"] == 0:
         return 0  # Validation set
     elif chip.attrs["fold"] >= 1:
@@ -76,32 +78,101 @@ def _train_val_fold(chip: xr.Dataset) -> int:
 
 def _pre_post_mask_tuple(
     dataset: xr.Dataset,
-) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
     """
     From a single xarray.Dataset, split it into a tuple containing the
     pre/post/target tensors and a dictionary object containing metadata.
 
     Returns
     -------
-    data_tuple : tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]
+    data_tuple : tuple[np.ndarray, np.ndarray, np.ndarray, dict]
         A tuple with 4 objects, the pre-event image, the post-event image, the
         mask image, and a Python dict containing metadata (e.g. filename, UUID,
         fold, comments).
     """
-    # return just the RGB bands for now
-    pre = dataset.pre_fire.data[[3, 2, 1], ...].astype(dtype="float32")
-    post = dataset.post_fire.data[[3, 2, 1], ...].astype(dtype="float32")
+    # # return just the RGB bands for now
+    # pre = dataset.pre_fire.data[[3, 2, 1], ...].astype(dtype="float32")
+    # post = dataset.post_fire.data[[3, 2, 1], ...].astype(dtype="float32")
+    pre = dataset.pre_fire.data.astype(dtype="float32")
+    post = dataset.post_fire.data.astype(dtype="float32")
     mask = dataset.mask.data.astype(dtype="uint8")
 
+    # pre_g = dataset.pre_fire.data[2, ...].astype(dtype="float32")
+    # pre_r = dataset.pre_fire.data[3, ...].astype(dtype="float32")
+    # pre_nir = dataset.pre_fire.data[7, ...].astype(dtype="float32")
+    # pre_swir = dataset.pre_fire.data[11, ...].astype(dtype="float32")
+
+    # post_g = dataset.post_fire.data[2, ...].astype(dtype="float32")
+    # post_r = dataset.post_fire.data[3, ...].astype(dtype="float32")
+    # post_nir = dataset.post_fire.data[7, ...].astype(dtype="float32")
+    # post_swir = dataset.post_fire.data[11, ...].astype(dtype="float32")
+
+    # # NDVI: nir - r / nir + r
+    # pre_ndvi = np.nan_to_num(
+    #     (pre_nir - pre_r) / (pre_nir + pre_r), nan=0, posinf=0, neginf=0
+    # )
+    # # repeat the same for all normalized index
+    # post_ndvi = np.nan_to_num(
+    #     (post_nir - post_r) / (post_nir + post_r), nan=0, posinf=0, neginf=0
+    # )
+
+    # # NDWI: g - nir / g + nir
+    # pre_ndwi = np.nan_to_num(
+    #     (pre_g - pre_nir) / (pre_g + pre_nir), nan=0, posinf=0, neginf=0
+    # )
+    # post_ndwi = np.nan_to_num(
+    #     (post_g - post_nir) / (post_g + post_nir), nan=0, posinf=0, neginf=0
+    # )
+
+    # # NBR: nir - swir / nir + swir
+    # pre_nbr = np.nan_to_num(
+    #     (pre_nir - pre_swir) / (pre_nir + pre_swir), nan=0, posinf=0, neginf=0
+    # )
+    # post_nbr = np.nan_to_num(
+    #     (post_nir - post_swir) / (post_nir + post_swir), nan=0, posinf=0, neginf=0
+    # )
+
+    # # combine ndvi, ndwi, nbr into a 3-channel array
+    # pre = np.stack([pre_ndvi, pre_ndwi, pre_nbr], axis=0)
+    # post = np.stack([post_ndvi, post_ndwi, post_nbr], axis=0)
+
     return (
-        torch.as_tensor(data=pre),
-        torch.as_tensor(data=post),
-        torch.as_tensor(data=mask),
+        pre,
+        post,
+        mask,
         {
             "filename": os.path.basename(dataset.encoding["source"]),
             **dataset.attrs,
         },
     )
+
+
+def _apply_augmentation(
+    sample: tuple[np.ndarray, np.ndarray, np.ndarray, dict]
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
+    """
+    Apply augmentations to a single sample.
+    """
+    aug = A.Compose(
+        [
+            A.HorizontalFlip(p=0.5),
+            A.VerticalFlip(p=0.5),
+            A.ShiftScaleRotate(
+                p=0.5, shift_limit=0.05, scale_limit=0.05, rotate_limit=10
+            ),
+        ],
+        additional_targets={"post": "image"},
+    )
+    pre, post, mask, metadata = sample
+
+    # Apply augmentations - albumenations expects channel last
+    auged = aug(image=pre.transpose(1, 2, 0), post=post.transpose(1, 2, 0), mask=mask)
+    pre, post, mask = (
+        auged["image"].transpose(2, 0, 1),
+        auged["post"].transpose(2, 0, 1),
+        auged["mask"],
+    )
+    return (pre, post, mask, metadata)
 
 
 def _stack_tensor_collate_fn(
@@ -111,9 +182,15 @@ def _stack_tensor_collate_fn(
     Stack a list of torch.Tensor objects into a single torch.Tensor, and
     combine metadata attributes into a list of dicts.
     """
-    pre_tensor: torch.Tensor = torch.stack(tensors=[sample[0] for sample in samples])
-    post_tensor: torch.Tensor = torch.stack(tensors=[sample[1] for sample in samples])
-    mask_tensor: torch.Tensor = torch.stack(tensors=[sample[2] for sample in samples])
+    pre_tensor: torch.Tensor = torch.stack(
+        tensors=[torch.as_tensor(sample[0]) for sample in samples]
+    )
+    post_tensor: torch.Tensor = torch.stack(
+        tensors=[torch.as_tensor(sample[1]) for sample in samples]
+    )
+    mask_tensor: torch.Tensor = torch.stack(
+        tensors=[torch.as_tensor(sample[2]) for sample in samples]
+    )
     metadata: list[dict] = [sample[3] for sample in samples]
 
     return pre_tensor, post_tensor, mask_tensor, metadata
@@ -139,8 +216,8 @@ class ChaBuDDataPipeModule(L.LightningDataModule):
             # From https://huggingface.co/datasets/chabud-team/chabud-ecml-pkdd2023/tree/main
             "https://huggingface.co/datasets/chabud-team/chabud-ecml-pkdd2023/resolve/main/train_eval.hdf5",
             # From https://huggingface.co/datasets/chabud-team/chabud-extra/tree/main
-            # "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_0.hdf5",
-            # "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_1.hdf5",
+            "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_0.hdf5",
+            "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_1.hdf5",
             # "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_2.hdf5",
             # "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_3.hdf5",
             # "https://huggingface.co/datasets/chabud-team/chabud-extra/resolve/main/california_4.hdf5",
@@ -222,8 +299,9 @@ class ChaBuDDataPipeModule(L.LightningDataModule):
         # Step 4 - Convert from xarray.Dataset to tuple of torch.Tensor objects
         # Also do shuffling (for train set only), batching, and tensor stacking
         self.datapipe_train = (
-            dp_train.shuffle(buffer_size=100)
+            dp_train.shuffle(buffer_size=2000)
             .map(fn=_pre_post_mask_tuple)
+            .map(fn=_apply_augmentation)
             .batch(batch_size=self.batch_size)
             .collate(collate_fn=_stack_tensor_collate_fn)
         )
